@@ -1,0 +1,22 @@
+{#- Step indicator: "Step 2 of 5 · Team members" with five dots.
+    Steps whose data exists stay reachable until the tasks are sent. -#}
+{% set labels = {"done": "done", "open": "next", "current": "current step", "future": "not available yet"} %}
+<nav class="steps" aria-label="Setup steps">
+  <p class="steps-label">Step {{ step }} of {{ steps|length }} · {{ steps[step - 1].title }}</p>
+  <ol class="steps-dots">
+    {% for s in steps %}
+      {% set state = "current" if s.number == step else ("done" if s.number < reachable else ("open" if s.number == reachable else "future")) %}
+      <li>
+        {% if state in ("done", "open") and not steps_locked %}
+          <a class="dot {{ state }}" href="{{ url_for(s.endpoint) }}">
+            <span class="visually-hidden">Step {{ s.number }}: {{ s.title }} ({{ labels[state] }})</span>
+          </a>
+        {% else %}
+          <span class="dot {{ state }}"{% if state == "current" %} aria-current="step"{% endif %}>
+            <span class="visually-hidden">Step {{ s.number }}: {{ s.title }} ({{ labels[state] }})</span>
+          </span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+</nav>

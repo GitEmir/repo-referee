@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Connect your GitHub repo</h1>
+  <p class="lead">The repo where your team already works. Every task becomes an issue there, assigned to the person who chose it.</p>
+
+  <form method="post" class="repo-form" novalidate>
+    <div class="field">
+      <label class="label" for="repo">Repository</label>
+      <input class="input mono" type="text" id="repo" name="repo" value="{{ typed }}" maxlength="300"
+             placeholder="owner/repo or https://github.com/owner/repo" autocomplete="off" autocapitalize="off" spellcheck="false"
+             {% if not project.repo %}autofocus{% endif %}
+             {% if error_kind and error_kind != "check" %}aria-invalid="true" aria-describedby="repo-message"{% endif %}>
+    </div>
+    <button class="button {{ 'secondary' if project.repo else '' }}" type="submit">
+      <i class="ti ti-brand-github" aria-hidden="true"></i> {{ "Check again" if project.repo else "Connect repo" }}
+    </button>
+  </form>
+
+  {% if message %}
+    <p class="message {{ 'heads-up' if error_kind == 'format' else 'error' }}" id="repo-message" role="alert">
+      <i class="ti ti-{{ 'info-circle' if error_kind == 'format' else 'alert-circle' }}" aria-hidden="true"></i><span>{{ message }}</span>
+    </p>
+  {% endif %}
+
+  {% if project.repo %}
+    <div class="repo-summary">
+      <p class="repo-name">
+        <i class="ti ti-circle-check" aria-hidden="true"></i>
+        <a class="mono" href="{{ project.repo.html_url }}" target="_blank" rel="noopener noreferrer">{{ project.repo.full_name }}</a>
+        <span class="muted">is connected</span>
+      </p>
+
+      {% if members %}
+        <ul class="member-list check-list" aria-label="Who can be assigned">
+          {% for member in members %}
+            <li class="member">
+              <span class="avatar" aria-hidden="true">{{ member.name[:1]|upper }}</span>
+              <span class="member-name">{{ member.name }}</span>
+              <span class="mono muted member-github">@{{ member.github }}</span>
+              {% if member.assignable %}
+                <span class="pill ok"><i class="ti ti-check" aria-hidden="true"></i> can be assigned</span>
+              {% else %}
+                <span class="pill heads-up"><i class="ti ti-clock" aria-hidden="true"></i> hasn't accepted the repo invitation yet</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        {% if members|rejectattr("assignable")|list %}
+          <p class="note muted">You can continue. People can accept the invitation later in GitHub; Repo Referee checks again when you send the tasks.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="actions split">
+      <span class="muted">{{ project.tasks|length }} {{ "task is" if project.tasks|length == 1 else "tasks are" }} ready for review</span>
+      <a class="button" href="{{ url_for('setup_review') }}">Continue <i class="ti ti-arrow-right" aria-hidden="true"></i></a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Paste the assignment</h1>
+  <p class="lead">Paste the whole assignment, including its grading criteria. Repo Referee turns it into small tasks, each linked to a criterion. Your team can change everything afterwards.</p>
+
+  <form method="post" class="stack" id="assignment-form">
+    <div class="field">
+      <label class="label" for="assignment">Assignment and grading criteria</label>
+      <textarea class="input textarea" id="assignment" name="assignment" rows="14" maxlength="60000"
+                placeholder="Paste the assignment text here, with its grading criteria…"
+                {% if not text %}autofocus{% endif %}
+                {% if error %}aria-describedby="assignment-message"{% endif %}>{{ text }}</textarea>
+    </div>
+
+    {% if error == "failed" %}
+      <p class="message error" id="assignment-message" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>{{ message }}</span></p>
+    {% elif error %}
+      <p class="message heads-up" id="assignment-message" role="alert"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ message }}</span></p>
+    {% endif %}
+
+    {% if confirm_replace %}
+      <div class="message heads-up confirm" role="alert">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <div>
+          <p><strong>This replaces the current tasks.</strong> Any edits and choices on the review page will be lost.</p>
+          <div class="confirm-actions">
+            <button class="button" type="submit" name="confirm_replace" value="yes" data-loading>Replace tasks</button>
+            <a class="button secondary" href="{{ url_for('setup_repo') }}">Keep current tasks</a>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="actions split-quiet">
+        {% if has_tasks %}
+          <span class="muted">You already have {{ project.tasks|length }} {{ "task" if project.tasks|length == 1 else "tasks" }}. Generating again replaces them.</span>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <div class="actions">
+          {% if has_tasks %}
+            <a class="button secondary" href="{{ url_for('setup_repo') }}">Keep current tasks</a>
+          {% endif %}
+          <button class="button" type="submit" data-loading>
+            <i class="ti ti-sparkles" aria-hidden="true"></i>
+            {{ "Try again" if error == "failed" else "Generate tasks" }}
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
+    <p class="loading-note muted" id="loading-note" hidden role="status">
+      <i class="ti ti-loader-2 spin" aria-hidden="true"></i> Reading your assignment… This usually takes under a minute.
+    </p>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Loading state: the page waits for Claude, so show that something is happening
+  // and stop a second click from starting a second request.
+  (function () {
+    var form = document.getElementById("assignment-form");
+    var note = document.getElementById("loading-note");
+    form.addEventListener("submit", function (event) {
+      if (form.dataset.sending) { event.preventDefault(); return; }
+      form.dataset.sending = "yes";
+      var clicked = event.submitter;
+      form.querySelectorAll("[data-loading]").forEach(function (button) {
+        button.setAttribute("aria-disabled", "true");
+        if (button === clicked || !clicked) { button.textContent = "Reading your assignment…"; }
+      });
+      document.getElementById("assignment").readOnly = true;
+      // Leaving now wouldn't stop the request: hide the ways out until the answer is in.
+      document.querySelectorAll('a.button, .steps-dots a').forEach(function (link) { link.hidden = true; });
+      note.hidden = false;
+    });
+  })();
+</script>
+{% endblock %}

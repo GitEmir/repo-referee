@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{#- The dashboard shell. dashboard.js asks /api/status for the live numbers and fills it in. -#}
+{% block title %}Dashboard · {{ project.project.name }} · Repo Referee{% endblock %}
+{% block content %}
+<div class="dashboard" id="dashboard" data-poll-seconds="{{ poll_seconds }}">
+  <header class="dashboard-head">
+    <div>
+      <h1>{{ project.project.name }}</h1>
+      <p class="muted">
+        Status comes straight from
+        <a class="mono" href="{{ project.repo.html_url }}/issues" target="_blank" rel="noopener noreferrer">{{ project.repo.full_name }}</a>.
+        Close an issue in GitHub and this page follows.
+      </p>
+    </div>
+  </header>
+
+  <section class="feedback" aria-label="Feedback">
+    <ul class="feedback-list" id="feedback" aria-live="polite"></ul>
+  </section>
+
+  <section class="card" aria-labelledby="progress-title">
+    <div class="section-head">
+      <h2 id="progress-title">Progress per criterion</h2>
+      <p class="overall mono-numbers" id="overall"></p>
+    </div>
+    <div class="overall-bar" id="overall-bar"></div>
+    <ul class="criterion-progress" id="criteria" aria-live="off">
+      <li class="loading-row muted">Checking GitHub…</li>
+    </ul>
+    <p class="dropped-note muted" id="dropped-note" hidden></p>
+  </section>
+
+  <section class="card" aria-labelledby="summary-title">
+    <div class="section-head">
+      <h2 id="summary-title">Weekly summary</h2>
+      <button class="button secondary small" type="button" id="summary-button">
+        <i class="ti ti-sparkles" aria-hidden="true"></i> <span>Write weekly summary</span>
+      </button>
+    </div>
+    <p class="summary-note message" id="summary-note" role="status" hidden></p>
+    <div class="summary" id="summary" aria-live="polite">
+      {% if project.summary %}
+        <p class="summary-text">{{ project.summary.text }}</p>
+        <p class="summary-meta muted">{{ project.summary.period_label or (project.summary.period_start ~ " – " ~ project.summary.period_end) }} · Written by Claude from your closed issues</p>
+      {% else %}
+        <p class="summary-empty muted">One click writes a short summary of what the team closed in GitHub in the last 7 days.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="people-title">
+    <div class="section-head">
+      <h2 id="people-title">Contribution per person</h2>
+      <p class="muted legend" aria-hidden="true">
+        <span class="legend-item"><span class="square sq-0"></span> open</span>
+        <span class="legend-item"><span class="square sq-1"></span><span class="square sq-2"></span><span class="square sq-3"></span><span class="square sq-4"></span> done, darker = heavier</span>
+      </p>
+    </div>
+    <ul class="people" id="people">
+      <li class="loading-row muted">Checking GitHub…</li>
+    </ul>
+  </section>
+
+  <footer class="dashboard-foot">
+    <p class="sync" id="sync"><span class="sync-dot" aria-hidden="true"></span><span class="mono" id="sync-text">connecting to GitHub…</span></p>
+    <div class="start-over" id="start-over">
+      <button class="link-button" type="button" id="start-over-open">Start a new project</button>
+      <div class="message heads-up confirm" id="start-over-confirm" role="alertdialog" aria-labelledby="start-over-question" hidden>
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <div>
+          <p id="start-over-question"><strong>Start a new project?</strong> This clears the project from Repo Referee. Your issues stay in GitHub.</p>
+          <div class="confirm-actions">
+            <button class="button" type="button" id="start-over-yes">Start new project</button>
+            <button class="button secondary" type="button" id="start-over-no">Cancel</button>
+          </div>
+          <p class="start-over-error" id="start-over-error" role="alert" hidden></p>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

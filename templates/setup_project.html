@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Name your project</h1>
+  <p class="lead">Use the assignment your team is working on. You can change the name later.</p>
+
+  <form method="post" class="stack" novalidate>
+    <div class="field">
+      <label class="label" for="project-name">Project name</label>
+      <input class="input" type="text" id="project-name" name="name" value="{{ name }}" maxlength="80"
+             placeholder="Churn Prediction – Assignment 2" autocomplete="off" autofocus
+             {% if error %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+    </div>
+    {% if error %}
+      <p class="message heads-up" id="name-error" role="alert"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ error }}</span></p>
+    {% endif %}
+    <div class="actions">
+      <button class="button" type="submit">{{ "Continue" if project else "Start" }} <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+    </div>
+  </form>
+</section>
+{% endblock %}

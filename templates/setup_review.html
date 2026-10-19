@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card review-intro">
+  <h1>Review and choose tasks</h1>
+  <p class="lead">Change anything Claude proposed, then let everyone pick the tasks that suit them. Every task needs a person before the tasks go to GitHub.</p>
+
+  <div class="fair-share" id="fair-share" aria-labelledby="fair-share-title">
+    <div class="fair-share-head">
+      <h2 id="fair-share-title">Fair share</h2>
+      <p class="muted" id="fair-share-sum">{{ total_points }} points ÷ {{ project.team|length }} {{ "person" if project.team|length == 1 else "people" }} = {{ share }} points each</p>
+    </div>
+    <ul class="share-list">
+      {% for row in share_rows %}
+        <li class="share-row{% if row.over %} over{% endif %}" data-member-id="{{ row.id }}">
+          <div class="share-label">
+            <span class="share-name">{{ row.name }}</span>
+            <span class="share-value">{{ row.chosen }} / {{ row.share }}</span>
+          </div>
+          <div class="bar share-bar" role="progressbar" aria-label="{{ row.name }}'s chosen points against the fair share"
+               aria-valuemin="0" aria-valuemax="100"><div class="bar-fill"></div></div>
+          <p class="share-heads-up" role="status" {% if not row.over %}hidden{% endif %}>{{ row.heads_up or "" }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<form id="review" class="review" novalidate>
+  {% for group in groups %}
+    <section class="card criterion-group" data-criterion-id="{{ group.criterion.id }}" aria-labelledby="crit-head-{{ group.criterion.id }}">
+      <header class="criterion-head">
+        <h2 id="crit-head-{{ group.criterion.id }}">Criterion {{ group.criterion.number }} · {{ group.criterion.title }}</h2>
+        {% if group.criterion.description %}<p class="muted">{{ group.criterion.description }}</p>{% endif %}
+      </header>
+
+      <div class="task-list">
+        {% for task in group.tasks %}
+          {% with key = task.id %}{% include "_task_card.html" %}{% endwith %}
+        {% endfor %}
+      </div>
+      <p class="empty criterion-empty" {% if group.tasks %}hidden{% endif %}>Criterion {{ group.criterion.number }} doesn't have a task yet.</p>
+      <button class="button secondary small add-task" type="button" data-criterion-id="{{ group.criterion.id }}">
+        <i class="ti ti-plus" aria-hidden="true"></i> Add task
+      </button>
+    </section>
+  {% endfor %}
+
+  <div class="send-bar">
+    <p class="save-status muted" id="save-status" role="status" aria-live="polite"></p>
+    <div class="send-area">
+      <div id="send-message" class="send-message" aria-live="polite"></div>
+      <button class="button" type="button" id="send-button">
+        <i class="ti ti-brand-github" aria-hidden="true"></i> <span>Send {{ project.tasks|length }} tasks to GitHub</span>
+      </button>
+    </div>
+  </div>
+</form>
+
+<template id="task-template">
+  {% with task = {"id": None, "title": "", "done_when": "", "weight": 1, "criterion_id": None, "owner_id": None}, key = "__KEY__" %}{% include "_task_card.html" %}{% endwith %}
+</template>
+<script type="application/json" id="team-data">{{ project.team|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/review.js') }}"></script>
+{% endblock %}

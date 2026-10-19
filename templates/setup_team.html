@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Who's on the team?</h1>
+  <p class="lead">Add everyone with their GitHub username, so their tasks can be assigned to them in GitHub. Most teams have about five people.</p>
+
+  {% if project.team %}
+    <ul class="member-list" aria-label="Team members">
+      {% for member in project.team %}
+        <li class="member">
+          <span class="avatar" aria-hidden="true">{{ member.name[:1]|upper }}</span>
+          <span class="member-name">{{ member.name }}</span>
+          <span class="mono muted member-github">@{{ member.github }}</span>
+          <form method="post" action="{{ url_for('remove_member', member_id=member.id) }}">
+            <button class="icon-button" type="submit" aria-label="Remove {{ member.name }}" title="Remove {{ member.name }}">
+              <i class="ti ti-x" aria-hidden="true"></i>
+            </button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">No one on the team yet. Start with yourself.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('add_member') }}" class="member-form" novalidate>
+    <div class="field">
+      <label class="label" for="member-name">Name</label>
+      <input class="input" type="text" id="member-name" name="name" value="{{ form.name }}" maxlength="60"
+             placeholder="Sara" autocomplete="off"{% if error_field != "github" %} autofocus{% endif %}
+             {% if error_field == "name" %}aria-invalid="true" aria-describedby="member-error"{% endif %}>
+    </div>
+    <div class="field">
+      <label class="label" for="member-github">GitHub username</label>
+      <span class="input-prefix">
+        <span class="prefix mono" aria-hidden="true">@</span>
+        <input class="input mono" type="text" id="member-github" name="github" value="{{ form.github }}" maxlength="40"
+               placeholder="sara-dev" autocomplete="off" autocapitalize="off" spellcheck="false"
+               {% if error_field == "github" %}autofocus aria-invalid="true" aria-describedby="member-error"{% endif %}>
+      </span>
+    </div>
+    <button class="button secondary" type="submit"><i class="ti ti-user-plus" aria-hidden="true"></i> Add</button>
+  </form>
+  {% if error %}
+    <p class="message heads-up" id="member-error" role="alert"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ error }}</span></p>
+  {% endif %}
+
+  {% if project.team %}
+    <div class="actions split">
+      <span class="muted">{{ project.team|length }} {{ "person" if project.team|length == 1 else "people" }} on the team</span>
+      <a class="button" href="{{ url_for('setup_assignment') }}">Continue <i class="ti ti-arrow-right" aria-hidden="true"></i></a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

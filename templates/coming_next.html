@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{#- Placeholder for steps that later build slices add. -#}
+{% block content %}
+<section class="card coming-next">
+  <i class="ti ti-clock coming-icon" aria-hidden="true"></i>
+  <h1>{{ steps[step - 1].title if step else "Dashboard" }}</h1>
+  <p class="lead">This part of Repo Referee is still being built.</p>
+  {% if step and step > 1 %}
+    <div class="actions start">
+      <a class="button secondary" href="{{ url_for(steps[step - 2].endpoint) }}"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
