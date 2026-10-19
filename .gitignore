@@ -1,0 +1,22 @@
+# Personal learning context (kept out of commits by default)
+/devpost/learner-profile.md
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+
+# Runtime data: project.json holds teammates' names and GitHub usernames
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local agent setup: machine-specific skill links and private instructions
+.agents/
+.claude/
+agent/
+CLAUDE.md
