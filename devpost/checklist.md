@@ -19,7 +19,7 @@ Build mode: fast
   Learner check: Open http://127.0.0.1:5000, create a project, add your teammates (try pasting a username with @), remove one and add them back, then restart the server and refresh: everything is still there. Does it look and feel like the style you chose?
   Commit: `Add project setup and team steps`
 
-- [ ] **2. Claude turns the sample assignment into criteria and tasks**
+- [x] **2. Claude turns the sample assignment into criteria and tasks**
   Becomes usable: A command that sends `samples/assignment-churn.md` to Claude through `generate_plan()` and prints the grading criteria and the weighted tasks, with the time taken, token usage and estimated cost.
   Why now: The riskiest unknown, as soon as the API key is in place: every later step depends on Claude returning criteria and tasks in exactly this shape, fast and cheap enough.
   PRD ref: `prd.md > Features and Behavior > Task Generation`
@@ -133,3 +133,4 @@ Activity mode: [live app and editor, explicit static fallback, focused alternati
 - Added `pytest.ini` (`pythonpath = .`) so `uv run pytest` finds the `referee` package from the project folder, as `spec.md > Where It Runs and How Someone Tries It` documents.
 - Two more independent reviews (slices 4–5 and 6–9, each finding checked by a skeptic) confirmed 28 findings; all were fixed. The ones that change behavior are recorded in `spec.md`: setup locks once some tasks are issues, issued tasks can't change, a hidden marker in each issue body prevents duplicates after a lost answer, and a project keeps at least one task. Each issue body now ends with that marker, and `project.json` stores a short project `key` for it.
 - Restarted the git history at the learner’s request: the first commit holds all project texts (planning documents, README, license, configuration examples), and the learner commits the code. The earlier per-slice history is kept outside the repository as a git bundle.
+- Claude spike on the learner’s `samples/assignment-churn.md`: a valid `Plan` with 5 criteria and 20 tasks, every criterion covered, weights 2–4 (49 points); 21.6 s, 2,187 input and 2,128 output tokens, about $0.05 per generation, below the spec’s estimate of $0.08–0.15. The server-side refusal fallback (`fallbacks="default"`) is accepted together with `parse()`.
