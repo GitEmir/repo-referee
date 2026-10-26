@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{#- "Welcome back": pick your profile to see your projects again. No password: everything
+    stays on this laptop. -#}
+{% block content %}
+<section class="card account-card">
+  <h1>Welcome back</h1>
+  <p class="lead">Choose your profile to see your projects.</p>
+  <ul class="profile-list">
+    {% for p in profiles %}
+      <li>
+        <form method="post" action="{{ url_for('signin_as', profile_id=p.id) }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <button class="profile-choice" type="submit">
+            {% with name=p.name, github=p.github, size="normal" %}{% include "_avatar.html" %}{% endwith %}
+            <span>{{ p.name }}{% if p.github %} <span class="mono muted">@{{ p.github }}</span>{% endif %}</span>
+            <i class="ti ti-arrow-right" aria-hidden="true"></i>
+          </button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

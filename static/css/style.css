@@ -30,6 +30,19 @@
   --sq-2: #40C463;
   --sq-3: #30A14E;
   --sq-4: #216E39;
+  /* One color per grading criterion on the board (top line of the column), in order. */
+  --crit-0: #7F77DD;
+  --crit-1: #1D9E75;
+  --crit-2: #D85A30;
+  --crit-3: #D4537E;
+  --crit-4: #BA7517;
+  --crit-5: #378ADD;
+  /* One avatar color per teammate: a light fill with the darkest text of the same hue. */
+  --person-0-bg: #CECBF6; --person-0-text: #26215C;
+  --person-1-bg: #9FE1CB; --person-1-text: #04342C;
+  --person-2-bg: #F5C4B3; --person-2-text: #4A1B0C;
+  --person-3-bg: #F4C0D1; --person-3-text: #4B1528;
+  --person-4-bg: #FAC775; --person-4-text: #412402;
 
   /* Type */
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -70,6 +83,9 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
   background: var(--bg-page);
   color: var(--text);
@@ -77,6 +93,190 @@ body {
   font-size: var(--size-body);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* A quiet dot grid, like a whiteboard. */
+  background-image: radial-gradient(circle, #D5DBE2 1px, transparent 1.4px);
+  background-size: 20px 20px;
+}
+
+/* The page grows, so the footer always sits at the bottom of the window. */
+body > main {
+  flex: 1 0 auto;
+}
+
+body > header,
+body > main,
+body > footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Backdrop: soft shapes that drift, and glide to new spots on every step --------- */
+
+/* The shapes stay in the empty space beside the page: never over the content, the header or the
+   footer. --content is the width of the page content (it differs per page); the space left and
+   right of it is the gutter. A narrow screen has no gutter, so the shapes stay off screen. */
+.backdrop {
+  --content: 880px;
+  --gutter: max(0px, (100vw - var(--content)) / 2);
+  --top: 112px;     /* below the header, with room for the drift */
+  --bottom: 100px;  /* above the footer, with room for the drift */
+  --buffer: 56px;   /* room between a shape (with its drift) and the content */
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.backdrop:is([data-scene="1"], [data-scene="2"], [data-scene="3"], [data-scene="4"]) { --content: 1180px; }
+.backdrop:is([data-scene="5"], [data-scene="dashboard"]) { --content: 1240px; }
+
+/* Every shape belongs to one side (from-left or from-right) and waits just off screen on that
+   side. A page places it (--placed: 1) at a spot in the gutter: --at is how far its center sits
+   from the screen edge (0 = on the edge, 1 = at the content), --spot its height. The spot is
+   then pulled back as far as needed to keep clear of the content, header and footer.
+   --w and --h are its size, --d its widest reach when turned. The glide between pages runs
+   from base.html (enterScene), at each shape's own pace (--glide, after --wait), with a small
+   overshoot, so the change feels playful rather than mechanical. */
+.shape {
+  --placed: 0;
+  --at: 0.5;
+  --spot: 50vh;
+  --y: clamp(calc(var(--top) + (var(--d) - var(--h)) / 2), var(--spot), calc(100vh - var(--bottom) - (var(--d) + var(--h)) / 2));
+  position: absolute;
+  top: 0;
+  left: 0;
+  translate: var(--x) var(--y);
+  rotate: var(--r, 0deg);
+  animation: drift-a 24s ease-in-out var(--drift-clock, 0s) infinite alternate;
+}
+
+.from-left {
+  --off: calc(-0.5 * (var(--w) + var(--d)) - 60px);
+  --on: min(calc(var(--gutter) * var(--at) - var(--w) / 2), calc(var(--gutter) - var(--buffer) - (var(--w) + var(--d)) / 2));
+  --x: calc(var(--off) + var(--placed) * (var(--on) - var(--off)));
+}
+
+.from-right {
+  --off: calc(100vw + (var(--d) - var(--w)) / 2 + 60px);
+  --on: max(calc(100vw - var(--gutter) * var(--at) - var(--w) / 2), calc(100vw - var(--gutter) + var(--buffer) + (var(--d) - var(--w)) / 2));
+  --x: calc(var(--off) + var(--placed) * (var(--on) - var(--off)));
+}
+
+.shape-a { --w: 360px; --h: 360px; --d: 360px; width: 360px; height: 360px; border-radius: 50%; background: var(--person-0-bg); opacity: 0.55; }
+.shape-b { --w: 300px; --h: 300px; --d: 424px; width: 300px; height: 300px; border-radius: 64px; background: var(--person-1-bg); opacity: 0.5; animation-name: drift-b; animation-duration: 29s; --r: 18deg; --glide: 1.9s; --wait: 0.1s; }
+.shape-c { --w: 80px; --h: 80px; --d: 80px; width: 80px; height: 80px; border-radius: 50%; background: var(--person-2-bg); opacity: 0.7; animation-duration: 17s; animation-direction: alternate-reverse; --glide: 1.2s; --wait: 0.15s; }
+.shape-d { --w: 40px; --h: 40px; --d: 40px; width: 40px; height: 40px; border-radius: 50%; background: var(--person-4-bg); opacity: 0.8; animation-name: drift-b; animation-duration: 13s; --glide: 1.4s; --wait: 0.05s; }
+.shape-e { --w: 240px; --h: 96px; --d: 260px; width: 240px; height: 96px; border-radius: 48px; background: var(--person-3-bg); opacity: 0.55; animation-duration: 21s; --r: -14deg; --glide: 1.7s; --wait: 0.2s; }
+.shape-f { --w: 150px; --h: 150px; --d: 150px; width: 150px; height: 150px; border-radius: 50%; border: 22px solid #AFA9EC; opacity: 0.45; animation-name: drift-b; animation-duration: 23s; animation-direction: alternate-reverse; --glide: 2s; --wait: 0.25s; }
+.shape-g { --w: 220px; --h: 110px; --d: 246px; width: 220px; height: 110px; border-radius: 110px 110px 0 0; background: #B5D4F4; opacity: 0.6; animation-duration: 27s; --glide: 1.5s; --wait: 0.1s; }
+.shape-h { --w: 64px; --h: 64px; --d: 91px; width: 64px; height: 64px; border-radius: 16px; background: #C0DD97; opacity: 0.75; animation-name: drift-b; animation-duration: 15s; --r: 24deg; --glide: 1.3s; --wait: 0.3s; }
+
+@keyframes drift-a {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(28px, -36px); }
+  100% { transform: translate(-20px, 24px); }
+}
+
+@keyframes drift-b {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(-32px, 30px) rotate(12deg); }
+}
+
+/* Each page places two shapes on the left and two on the right; the others stay off screen. */
+.backdrop[data-scene="start"] .shape-a { --placed: 1; --at: 0; --spot: 8vh; }
+.backdrop[data-scene="start"] .shape-d { --placed: 1; --at: 0.55; --spot: 72vh; }
+.backdrop[data-scene="start"] .shape-b { --placed: 1; --at: 0.1; --spot: 52vh; }
+.backdrop[data-scene="start"] .shape-c { --placed: 1; --at: 0.6; --spot: 14vh; }
+
+.backdrop[data-scene="1"] .shape-a { --placed: 1; --at: 0.05; --spot: 40vh; }
+.backdrop[data-scene="1"] .shape-h { --placed: 1; --at: 0.6; --spot: 14vh; }
+.backdrop[data-scene="1"] .shape-e { --placed: 1; --at: 0.3; --spot: 12vh; }
+.backdrop[data-scene="1"] .shape-f { --placed: 1; --at: 0.45; --spot: 60vh; }
+
+.backdrop[data-scene="2"] .shape-g { --placed: 1; --at: 0.3; --spot: 64vh; --r: 90deg; }
+.backdrop[data-scene="2"] .shape-h { --placed: 1; --at: 0.55; --spot: 20vh; --r: 40deg; }
+.backdrop[data-scene="2"] .shape-b { --placed: 1; --at: 0.05; --spot: 10vh; --r: -12deg; }
+.backdrop[data-scene="2"] .shape-f { --placed: 1; --at: 0.5; --spot: 58vh; }
+
+.backdrop[data-scene="3"] .shape-a { --placed: 1; --at: 0; --spot: 50vh; }
+.backdrop[data-scene="3"] .shape-g { --placed: 1; --at: 0.45; --spot: 14vh; --r: 180deg; }
+.backdrop[data-scene="3"] .shape-e { --placed: 1; --at: 0.35; --spot: 62vh; --r: 20deg; }
+.backdrop[data-scene="3"] .shape-c { --placed: 1; --at: 0.55; --spot: 20vh; }
+
+.backdrop[data-scene="4"] .shape-h { --placed: 1; --at: 0.5; --spot: 64vh; --r: -10deg; }
+.backdrop[data-scene="4"] .shape-d { --placed: 1; --at: 0.6; --spot: 22vh; }
+.backdrop[data-scene="4"] .shape-b { --placed: 1; --at: 0.1; --spot: 36vh; --r: 42deg; }
+.backdrop[data-scene="4"] .shape-e { --placed: 1; --at: 0.4; --spot: 12vh; }
+
+.backdrop[data-scene="5"] .shape-a { --placed: 1; --at: 0; --spot: 28vh; }
+.backdrop[data-scene="5"] .shape-d { --placed: 1; --at: 0.5; --spot: 76vh; }
+.backdrop[data-scene="5"] .shape-f { --placed: 1; --at: 0.45; --spot: 16vh; }
+.backdrop[data-scene="5"] .shape-c { --placed: 1; --at: 0.6; --spot: 68vh; }
+
+.backdrop[data-scene="dashboard"] .shape-g { --placed: 1; --at: 0.35; --spot: 70vh; --r: 180deg; }
+.backdrop[data-scene="dashboard"] .shape-h { --placed: 1; --at: 0.55; --spot: 20vh; --r: 15deg; }
+.backdrop[data-scene="dashboard"] .shape-b { --placed: 1; --at: 0.1; --spot: 54vh; --r: 30deg; }
+.backdrop[data-scene="dashboard"] .shape-c { --placed: 1; --at: 0.55; --spot: 14vh; }
+
+/* Moving to another page (a view transition): the old page's workspace slides out while the new
+   one slides in from the side you're heading to. The rest of the page (header, step bar, backdrop)
+   switches without a fade, so the shapes glide on smoothly underneath. Browsers without view
+   transitions get the plain slide-in below instead. */
+@view-transition {
+  navigation: auto;
+}
+
+.workspace {
+  view-transition-name: workspace-in;  /* the leaving page renames its own to "workspace-out" */
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-old(workspace-out) {
+  animation: workspace-out-left 420ms cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+::view-transition-new(workspace-in) {
+  animation: workspace-in-right 620ms cubic-bezier(0.2, 0.8, 0.2, 1) 140ms both;
+}
+
+html[data-enter="back"]::view-transition-old(workspace-out) { animation-name: workspace-out-right; }
+html[data-enter="back"]::view-transition-new(workspace-in) { animation-name: workspace-in-left; }
+
+@keyframes workspace-out-left { to { opacity: 0; transform: translateX(-120px) scale(0.97); } }
+@keyframes workspace-out-right { to { opacity: 0; transform: translateX(120px) scale(0.97); } }
+@keyframes workspace-in-right { from { opacity: 0; transform: translateX(120px) scale(0.97); } }
+@keyframes workspace-in-left { from { opacity: 0; transform: translateX(-120px) scale(0.97); } }
+
+/* The page slides in from the side you're heading to: forward from the right, back from the left. */
+html[data-enter="forward"] .page-enter { animation: enter-forward 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html[data-enter="back"] .page-enter { animation: enter-back 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html[data-enter="first"] .page-enter { animation: enter-first 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html[data-transition] .page-enter { animation: none; }
+
+@keyframes enter-forward {
+  from { opacity: 0; transform: translateX(48px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes enter-back {
+  from { opacity: 0; transform: translateX(-48px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes enter-first {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shape { animation: none; transition: none; }
+  .page-enter { animation: none !important; }
+  @view-transition { navigation: none; }
 }
 
 h1,
@@ -148,6 +348,800 @@ a:hover {
   padding-bottom: var(--space-7);
 }
 
+/* The dashboard is wider, so every criterion gets its own column on a laptop screen. */
+.container.wide {
+  max-width: 1240px;
+}
+
+/* Setup pages 1-4: one calm card in the middle; on the team step the live team grows on the right. */
+.container.roomy {
+  max-width: 1180px;
+}
+
+.float-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 640px) minmax(150px, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.float-main {
+  min-width: 0;
+}
+
+/* A softer card in the middle: no hard edge, a light shadow instead. */
+.float-main .card {
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.04), 0 10px 30px rgba(31, 35, 40, 0.07);
+}
+
+/* ---- The live team: one face per person, no limit, a plus at the end ---------------- */
+
+.team-strip {
+  padding-top: var(--space-5);
+}
+
+.team-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: 190px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-faces .avatar,
+.face-add {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+
+.team-faces .avatar {
+  box-shadow: 0 0 0 2px var(--bg-card), 0 2px 8px rgba(31, 35, 40, 0.12);
+  animation: face-in 300ms ease-out;
+}
+
+@keyframes face-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.face-add {
+  display: inline-grid;
+  place-items: center;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 18px;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.face-add:hover {
+  border-color: var(--green);
+  color: var(--green-strong);
+  text-decoration: none;
+}
+
+/* ---- Quiet help on the team step ----------------------------------------------------- */
+
+.label-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.help-pop summary {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.help-pop summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-pop summary:hover,
+.help-pop[open] summary {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.help-pop-body {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  width: 250px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: 0 10px 30px rgba(31, 35, 40, 0.14);
+  font-size: var(--size-small);
+  font-weight: 400;
+}
+
+.help-pop-title {
+  font-weight: 700;
+}
+
+.help-pop-url {
+  margin: 4px 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-page);
+  font-family: var(--font-mono);
+}
+
+.help-pop-url strong {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--celebrate-bg);
+  color: var(--celebrate-text);
+}
+
+.team-note,
+.sample-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-3);
+  font-size: var(--size-small);
+}
+
+.sample-hint a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* On smaller screens the card comes first and the team wraps below it. */
+@media (max-width: 1000px) {
+  .float-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .float-main {
+    order: -1;
+  }
+
+  .float-side:empty {
+    display: none;
+  }
+
+  .team-strip {
+    padding-top: 0;
+  }
+
+  .team-faces {
+    max-width: none;
+  }
+}
+
+/* ---- Calm, centered start page ------------------------------------------------------- */
+
+.start-center {
+  max-width: 660px;
+  margin: 0 auto;
+  padding: var(--space-7) 0 var(--space-6);
+  text-align: center;
+}
+
+.start-center h1 {
+  margin-top: var(--space-4);
+  font-size: 44px;
+  line-height: 1.12;
+}
+
+.start-lead {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--size-large);
+}
+
+/* The name field and Start sit together, like one search bar. */
+.start-form {
+  display: flex;
+  max-width: 480px;
+  margin: var(--space-6) auto 0;
+  padding: 5px;
+  border: 1px solid var(--control-border);
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow: 0 10px 30px rgba(31, 35, 40, 0.07);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.start-form:focus-within {
+  border-color: var(--green-strong);
+  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.25), 0 10px 30px rgba(31, 35, 40, 0.07);
+}
+
+.start-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--size-body);
+  outline: none;
+}
+
+.start-form input::placeholder {
+  color: var(--placeholder);
+}
+
+.start-form .button {
+  border-radius: 10px;
+}
+
+.start-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-4);
+  font-size: var(--size-small);
+}
+
+.start-alt .link-button,
+.start-alt a {
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.start-continue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 480px;
+  margin: var(--space-6) auto 0;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: 0 10px 30px rgba(31, 35, 40, 0.07);
+}
+
+.start-continue .button {
+  margin-top: var(--space-3);
+}
+
+.start-project-name {
+  font-size: var(--size-large);
+  font-weight: 700;
+}
+
+/* Three cards under the form: what the app does, in the order you'll use it. */
+.start-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  max-width: 860px;
+  margin: var(--space-4) auto var(--space-7);
+  padding: 0;
+  list-style: none;
+}
+
+.start-step {
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  text-align: center;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.start-step:hover {
+  box-shadow: 0 10px 24px rgba(31, 35, 40, 0.08);
+  transform: translateY(-2px);
+}
+
+.start-step-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  font-size: 22px;
+}
+
+.start-step-icon.s1 { background: #EEEDFE; color: #3C3489; }
+.start-step-icon.s2 { background: #E1F5EE; color: #085041; }
+.start-step-icon.s3 { background: #FAECE7; color: #712B13; }
+
+.start-step-title {
+  margin-top: var(--space-3);
+  font-weight: 700;
+}
+
+.start-step-text {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--size-small);
+}
+
+@media (max-width: 720px) {
+  .start-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .start-center {
+    padding-top: var(--space-5);
+  }
+
+  .start-center h1 {
+    font-size: 32px;
+  }
+}
+
+/* ---- Footer with Reset demo ---------------------------------------------------------- */
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-4);
+  font-size: var(--size-small);
+}
+
+.reset-demo summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.reset-demo summary::-webkit-details-marker {
+  display: none;
+}
+
+.reset-demo summary:hover {
+  color: var(--text);
+}
+
+.reset-demo-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: 360px;
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid #F2E3A6;
+  border-radius: var(--radius);
+  background: #FFFCEB;
+  color: var(--heads-up-text);
+}
+
+/* ---- Header account --------------------------------------------------------------- */
+
+.header-account {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.header-link:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.header-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--size-small);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .hide-small {
+    display: none;
+  }
+}
+
+/* ---- Add yourself ------------------------------------------------------------------ */
+
+.suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid #A6E3B4;
+  border-radius: var(--radius);
+  background: var(--celebrate-bg);
+}
+
+.suggest-text {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.suggest-title {
+  color: var(--celebrate-text);
+  font-weight: 700;
+}
+
+.suggest-sub {
+  font-size: var(--size-small);
+}
+
+.suggest-name {
+  flex: 1 1 160px;
+  width: auto;
+  min-height: 36px;
+}
+
+/* ---- Your projects and profiles ----------------------------------------------------- */
+
+.hero-compact {
+  padding-bottom: var(--space-5);
+}
+
+.projects-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--size-large);
+}
+
+.projects-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.projects-head .projects-title {
+  margin-bottom: 0;
+}
+
+.tiles-section + .tiles-section {
+  margin-top: var(--space-6);
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.tile-form {
+  display: flex;
+}
+
+/* A project tile: a soft colored cover with an icon and the one number that matters (the
+   tasks in GitHub, or the step it's at), the name below; the whole tile is one button. */
+.project-tile {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 140px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.project-tile:hover {
+  box-shadow: 0 10px 24px rgba(31, 35, 40, 0.1);
+  transform: translateY(-2px);
+}
+
+.project-tile.is-open {
+  border-color: var(--text);
+}
+
+/* One full, flat color per tile (no gradient), deep enough for white text. */
+.project-tile { --tile-bg: #6A61D1; }
+.project-tile.cover-1 { --tile-bg: #148A66; }
+.project-tile.cover-2 { --tile-bg: #C24E26; }
+.project-tile.cover-3 { --tile-bg: #C2416F; }
+.project-tile.cover-4 { --tile-bg: #A66812; }
+.project-tile.cover-5 { --tile-bg: #2F7BC9; }
+.project-tile.cover-example { --tile-bg: #1F883D; }
+
+.tile-cover {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  height: 72px;
+  padding: 0 var(--space-4);
+  background: var(--tile-bg);
+  color: #FFFFFF;
+}
+
+.tile-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 20px;
+}
+
+.tile-stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tile-number {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.tile-number-label {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.project-tile-name {
+  font-weight: 700;
+}
+
+.project-tile-where {
+  color: var(--text-muted);
+  font-size: var(--size-small);
+}
+
+.tile-pill {
+  margin-top: var(--space-1);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--button-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* A saved project's tile with its "⋯" menu (delete) on the cover; they lift together on hover. */
+.tile-wrap {
+  position: relative;
+  display: flex;
+  transition: transform 150ms ease;
+}
+
+.tile-wrap > .tile-form {
+  flex: 1;
+}
+
+.tile-wrap:hover {
+  transform: translateY(-2px);
+}
+
+.tile-wrap .project-tile:hover {
+  transform: none;
+}
+
+.tile-menu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+.tile-menu > summary {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(31, 35, 40, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  font-size: 18px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tile-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tile-menu > summary:hover,
+.tile-menu[open] > summary {
+  background: var(--bg-card);
+}
+
+.tile-menu-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 250px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: 0 12px 28px rgba(31, 35, 40, 0.14);
+  font-size: var(--size-small);
+}
+
+.button.danger {
+  background: #CF222E;
+  color: var(--button-text);
+}
+
+.button.danger:hover {
+  background: #A40E26;
+}
+
+/* "Create new project" is one big dashed tile that leads to the first question. */
+.project-tile.new-tile {
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1.5px dashed var(--border-strong);
+  background: transparent;
+}
+
+.project-tile.new-tile:hover {
+  border-color: var(--green);
+  background: var(--bg-card);
+  box-shadow: none;
+}
+
+.new-tile-plus {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--button-text);
+  font-size: 18px;
+}
+
+.account-card {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.account-card .lead {
+  margin-top: var(--space-2);
+}
+
+.account-card form.stack {
+  margin-top: var(--space-5);
+}
+
+.profile-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.profile-preview-name {
+  font-size: var(--size-large);
+  font-weight: 700;
+}
+
+.account-or {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-choice:hover {
+  border-color: var(--border-strong);
+}
+
+.profile-choice .ti {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.fine-print {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  font-size: 12px;
+}
+
+.need-more {
+  margin-top: var(--space-2);
+  font-size: var(--size-small);
+}
+
 /* ---- Header ----------------------------------------------------------------------- */
 
 .site-header {
@@ -179,14 +1173,25 @@ a:hover {
   flex: none;
 }
 
-.header-sep {
-  color: var(--border-strong);
-  font-size: var(--size-large);
+/* The wordmark: the name written like a repo path, with the slash in the logo's darkest green. */
+.brand-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
 }
 
+.brand-slash {
+  color: var(--green-strong);
+}
+
+/* The project name sits in a light pill, so it reads as a different thing than the wordmark. */
 .header-project {
   min-width: 0;
   overflow: hidden;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--track);
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
@@ -195,73 +1200,211 @@ a:hover {
 
 /* ---- Step indicator --------------------------------------------------------------- */
 
-.steps {
+.stepbar ol {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.steps-label {
-  color: var(--text-muted);
-  font-size: var(--size-small);
-  font-weight: 600;
-}
-
-.steps-dots {
-  display: flex;
-  align-items: center;
-  margin: 0 -7px 0 0;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
   padding: 0;
   list-style: none;
 }
 
-.steps-dots li {
-  display: flex;
+.stepbar-item {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-/* Each dot sits in a 24px box, so the reachable ones are easy to click or tap. */
-.dot {
-  position: relative;
+.stepbar-item.icon-only {
+  flex: none;
+}
+
+.stepbar-item > a,
+.stepbar-item > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stepbar-item > a:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.stepbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stepbar-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px var(--border-strong);
+  font-size: 12px;
+}
+
+.stepbar-mark .ti {
+  font-size: 14px;
+}
+
+.stepbar-item.done .stepbar-mark {
+  background: var(--green);
+  box-shadow: none;
+  color: var(--button-text);
+}
+
+.stepbar-item.done > a,
+.stepbar-item.done > span {
+  color: var(--text);
+}
+
+.stepbar-item.open .stepbar-mark {
+  box-shadow: inset 0 0 0 2px var(--green);
+  color: var(--green-strong);
+}
+
+.stepbar-item.current > span {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--button-text);
+}
+
+.stepbar-item.current .stepbar-mark {
+  background: var(--button-text);
+  box-shadow: none;
+  color: var(--text);
+}
+
+.stepbar-item.future > span {
+  color: var(--placeholder);
+}
+
+/* On a phone only the current step keeps its name; the others show their number or check. */
+@media (max-width: 720px) {
+  .stepbar-item:not(.current) {
+    flex: none;
+  }
+
+  .stepbar-item:not(.current) .stepbar-title {
+    display: none;
+  }
+
+  .stepbar-item > a,
+  .stepbar-item > span {
+    padding: 0 9px;
+  }
+}
+
+/* ---- Start page -------------------------------------------------------------------- */
+
+.hero {
+  padding: var(--space-4) 0 var(--space-6);
+}
+
+.hero-kicker {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--celebrate-bg);
+  color: var(--celebrate-text);
+  font-size: var(--size-small);
+  font-weight: 700;
+}
+
+.hero h1 {
+  max-width: 20ch;
+  margin-top: var(--space-4);
+  font-size: 40px;
+  line-height: 1.15;
+}
+
+.hero .lead {
+  margin-top: var(--space-4);
+  font-size: var(--size-large);
+}
+
+.how {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.how-num {
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
   border-radius: 999px;
+  color: var(--button-text);
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.dot::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--bg-card);
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
-  transition: width var(--bar-duration) ease, background-color var(--bar-duration) ease, transform 150ms ease;
+.how li:nth-child(1) .how-num { background: var(--crit-0); }
+.how li:nth-child(2) .how-num { background: var(--crit-1); }
+.how li:nth-child(3) .how-num { background: var(--crit-2); }
+
+.start-card h2 {
+  font-size: var(--size-title);
 }
 
-.dot.done::before {
-  background: var(--green);
-  box-shadow: none;
+.start-card h2 + .lead,
+.start-card h2 + .muted {
+  margin-top: var(--space-2);
 }
 
-.dot.open::before {
-  box-shadow: inset 0 0 0 2px var(--green);
+.start-label {
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  font-weight: 600;
 }
 
-.dot.current {
-  width: 34px;
+.need {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--size-small);
 }
 
-.dot.current::before {
-  width: 26px;
-  background: var(--text);
-  box-shadow: none;
+.need .ti {
+  font-size: 18px;
 }
 
-a.dot:hover::before {
-  transform: scale(1.25);
+@media (max-width: 720px) {
+  .hero h1 {
+    font-size: 30px;
+  }
 }
 
 /* ---- Cards and layout helpers ----------------------------------------------------- */
@@ -436,9 +1579,14 @@ a.dot:hover::before {
   cursor: default;
 }
 
-.steps-dots a[hidden],
 a.button[hidden] {
   display: none;
+}
+
+/* While the AI reads the assignment the done steps stay in view, but can't be clicked. */
+.stepbar a[aria-disabled="true"] {
+  pointer-events: none;
+  cursor: default;
 }
 
 .button .ti {
@@ -522,16 +1670,40 @@ a.button[hidden] {
 }
 
 .avatar {
+  position: relative;
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
+  overflow: hidden;
   border-radius: 999px;
   background: var(--track);
   color: var(--text-muted);
   font-size: var(--size-small);
   font-weight: 700;
+}
+
+/* The GitHub picture covers the letter; when it can't load, the letter stays. */
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-small {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.avatar-large {
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
 }
 
 .member-name {
@@ -590,8 +1762,35 @@ a.button[hidden] {
 
 .loading-note {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.loading-line {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
+  font-weight: 600;
+}
+
+/* The estimate bar fills over about 20 seconds and then waits, so it never claims to be done. */
+.loading-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.loading-bar {
+  width: 4%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+  transition: width 250ms linear;
+}
+
+.loading-left {
+  font-size: var(--size-small);
 }
 
 .loading-note[hidden] {
@@ -674,52 +1873,213 @@ a.button[hidden] {
   font-size: var(--size-small);
 }
 
-/* ---- Review step ------------------------------------------------------------------ */
+/* ---- Review step: a board per criterion ------------------------------------------- */
+
+.review-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: start;
+  gap: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.review-head h1 {
+  font-size: var(--size-title);
+}
+
+.review-head .lead {
+  margin-top: var(--space-2);
+}
 
 .review {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
-.review .card + .card {
-  margin-top: 0;
+/* How choosing works: three short steps above the board, closable. */
+.guide {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+.guide[hidden],
+.guide-open[hidden] {
+  display: none;
+}
+
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.guide-head h2 {
+  font-size: var(--size-body);
+}
+
+.guide-close {
+  width: 30px;
+  height: 30px;
+  margin: -6px -8px -6px 0;
+}
+
+.guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.guide-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--button-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guide-steps strong {
+  font-size: var(--size-small);
+}
+
+.guide-steps p {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.guide-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 800px) {
+  .guide-steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+}
+
+.review-board {
+  display: grid;
+  grid-auto-columns: minmax(240px, 1fr);
+  grid-auto-flow: column;
+  align-items: start;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+/* Like a board: a light grey column per criterion with its color on top, white cards inside. */
+.criterion-group {
+  --col: var(--crit-0);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #F1F3F6;
+  box-shadow: inset 0 4px 0 var(--col);
+  scroll-snap-align: start;
+}
+
+.criterion-head {
+  padding-top: var(--space-1);
 }
 
 .criterion-head h2 {
-  font-size: var(--size-large);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--size-body);
+  line-height: 1.3;
 }
 
-.criterion-head p {
-  margin-top: var(--space-1);
-  font-size: var(--size-small);
+.crit-num {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--col);
+  color: var(--button-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The whole explanation of what the grader looks for: it's what the tasks are for. */
+.crit-desc {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.crit-count {
+  display: inline-block;
+  margin-top: var(--space-2);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--track);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
+/* A compact task card: title, weight and who does it; the rest under "Details". */
 .task {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  gap: var(--space-2);
+  padding: 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: var(--bg-card);
-  transition: border-color 150ms ease;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.06);
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.task:hover {
+  border-color: var(--border-strong);
 }
 
 .task:focus-within {
   border-color: var(--control-border);
+  background: var(--bg-card);
+  box-shadow: 0 6px 16px rgba(31, 35, 40, 0.08);
 }
 
 .task.issued {
-  background: var(--bg-page);
+  background: var(--bg-card);
 }
 
 .task.issued .inline-input:hover {
@@ -747,18 +2107,14 @@ a.button[hidden] {
 
 .task.needs-attention {
   border-color: #D4A72C;
-}
-
-.task-fields {
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 0 0 2px #FFF1C2;
 }
 
 /* Fields that look like text until you hover or edit them. */
 .inline-input {
-  margin: 0 -8px;
-  padding: 4px 8px;
-  width: calc(100% + 16px);
+  margin: 0 -6px;
+  padding: 3px 6px;
+  width: calc(100% + 12px);
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
@@ -784,15 +2140,19 @@ a.button[hidden] {
 }
 
 .task-title-input {
-  font-weight: 600;
+  min-height: 2.8em;
+  font-size: var(--size-small);
+  font-weight: 700;
+  line-height: 1.4;
+  field-sizing: content;
 }
 
 .task-done-input {
+  min-height: 2.6em;
   color: var(--text-muted);
-  font-size: var(--size-small);
+  font-size: 12px;
   line-height: 1.5;
   field-sizing: content;
-  min-height: 2.6em;
 }
 
 .inline-label {
@@ -803,11 +2163,12 @@ a.button[hidden] {
   font-weight: 600;
 }
 
-.task-meta {
+.task-row {
   display: flex;
-  align-items: flex-end;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .weight-control {
@@ -816,15 +2177,13 @@ a.button[hidden] {
   border: 0;
 }
 
-.weight-control legend {
-  margin-bottom: 4px;
-}
-
 .segments {
   display: inline-flex;
+  gap: 2px;
   padding: 2px;
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
 }
 
 .segment {
@@ -842,12 +2201,12 @@ a.button[hidden] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   color: var(--text-muted);
-  font-size: var(--size-small);
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   transition: background-color 150ms ease, color 150ms ease;
 }
 
@@ -865,31 +2224,214 @@ a.button[hidden] {
   outline-offset: 1px;
 }
 
-.meta-field {
+.owner-pick {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
+.owner-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--track);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.owner-avatar.pc-0 { background: var(--person-0-bg); color: var(--person-0-text); }
+.owner-avatar.pc-1 { background: var(--person-1-bg); color: var(--person-1-text); }
+.owner-avatar.pc-2 { background: var(--person-2-bg); color: var(--person-2-text); }
+.owner-avatar.pc-3 { background: var(--person-3-bg); color: var(--person-3-text); }
+.owner-avatar.pc-4 { background: var(--person-4-bg); color: var(--person-4-text); }
+
+/* Who does it: the person's face and name; an empty dashed face with "Who?" until someone picks. */
+.owner-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 130px;
+  padding: 2px 10px 2px 2px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.owner-button:hover,
+.owner-button[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--track);
+}
+
+.owner-button:disabled {
+  cursor: default;
+}
+
+.owner-button:disabled:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
+.owner-button.unassigned {
+  color: var(--text-muted);
+}
+
+.owner-button.unassigned .owner-avatar {
+  border: 1.5px dashed var(--control-border);
+  background: transparent;
+  font-size: 14px;
+}
+
+.owner-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The row of faces that opens on a card: everyone's points so far against the fair share. */
+.who-pop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-page);
+  animation: who-open 160ms ease-out;
+}
+
+.who-pop[hidden] {
+  display: none;
+}
+
+@keyframes who-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.who-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 54px;
+  padding: 5px 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.who-option:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.who-option .owner-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.who-option[aria-pressed="true"] {
+  border-color: var(--text);
+  background: var(--bg-card);
+}
+
+.who-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.who-points {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* Already at the fair share: still allowed, but the numbers say so. */
+.who-option.full .who-points {
+  color: var(--heads-up-text);
+  font-weight: 700;
+}
+
+.who-none .owner-avatar {
+  border: 1.5px dashed var(--control-border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.task-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.task-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.task-details summary .ti {
+  transition: transform 150ms ease;
+}
+
+.task-details[open] summary .ti {
+  transform: rotate(90deg);
+}
+
+.details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
 .small-select {
-  min-height: 36px;
-  min-width: 150px;
-  max-width: 260px;
-  padding-top: 6px;
-  padding-bottom: 6px;
-  font-size: var(--size-small);
+  width: 100%;
+  min-height: 32px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-size: 12px;
 }
 
 .task-delete {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
-  margin-left: auto;
+  margin-top: var(--space-1);
 }
 
 .delete-confirm {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--size-small);
@@ -908,15 +2450,18 @@ a.button[hidden] {
 }
 
 .add-task {
-  margin-top: var(--space-3);
+  width: 100%;
+  margin-top: var(--space-2);
+  border-style: dashed;
 }
 
 /* ---- Fair share ------------------------------------------------------------------- */
 
 .fair-share {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
 }
 
 .fair-share-head {
@@ -937,28 +2482,48 @@ a.button[hidden] {
 
 .share-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-3) var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-3) var(--space-4);
   margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.share-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: 4px;
+}
+
+.share-row .avatar {
+  grid-row: span 2;
 }
 
 .share-label {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: 6px;
+  min-width: 0;
   font-size: var(--size-small);
 }
 
 .share-name {
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .share-value {
+  flex: none;
   color: var(--text-muted);
   font-weight: 600;
+}
+
+.share-bar {
+  height: 6px;
 }
 
 .share-bar .bar-fill {
@@ -974,12 +2539,13 @@ a.button[hidden] {
 }
 
 .share-heads-up {
-  margin-top: 6px;
+  grid-column: 1 / -1;
+  margin-top: 4px;
   padding: 6px 10px;
   border-radius: 8px;
   background: var(--heads-up-bg);
   color: var(--heads-up-text);
-  font-size: var(--size-small);
+  font-size: 12px;
 }
 
 .share-heads-up[hidden] {
@@ -998,7 +2564,9 @@ a.button[hidden] {
 }
 
 .criterion-empty {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  font-size: 12px;
 }
 
 .criterion-empty[hidden] {
@@ -1017,6 +2585,7 @@ a.button[hidden] {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--bg-card);
+  box-shadow: 0 -6px 20px rgba(31, 35, 40, 0.06);
 }
 
 .save-status {
@@ -1040,6 +2609,12 @@ a.button[hidden] {
 
 .send-message .message {
   max-width: 560px;
+}
+
+@media (max-width: 900px) {
+  .review-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---- Dashboard -------------------------------------------------------------------- */
@@ -1122,6 +2697,82 @@ a.button[hidden] {
   margin-top: var(--space-2);
 }
 
+.dashboard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Share board: a button that opens the view-only link, like a share button on a board app. */
+.share-board {
+  position: relative;
+  flex: none;
+}
+
+.share-board > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.share-board > summary::-webkit-details-marker {
+  display: none;
+}
+
+.share-board-box {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(420px, 90vw);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: 0 12px 32px rgba(31, 35, 40, 0.12);
+}
+
+.share-board-box p {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.share-board-title {
+  font-weight: 700;
+}
+
+.share-board-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.share-board-row .input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.share-board-open {
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+/* The view-only board says so in the header, where the account buttons would be. */
+.view-only-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--track);
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  font-weight: 700;
+}
+
 .section-head {
   display: flex;
   align-items: baseline;
@@ -1159,34 +2810,167 @@ a.button[hidden] {
   transition: width var(--bar-duration) ease;
 }
 
-.criterion-progress {
+.bar.complete .bar-fill {
+  background: var(--green-strong);
+}
+
+/* ---- The board: one column per criterion ------------------------------------------- */
+
+.board {
+  display: grid;
+  grid-auto-columns: minmax(210px, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+}
+
+.board-column {
+  --col: var(--crit-0);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: inset 0 4px 0 var(--col);
+}
+
+.col-color-1 { --col: var(--crit-1); }
+.col-color-2 { --col: var(--crit-2); }
+.col-color-3 { --col: var(--crit-3); }
+.col-color-4 { --col: var(--crit-4); }
+.col-color-5 { --col: var(--crit-5); }
+
+.board-column-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.board-column-title {
+  font-size: var(--size-body);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.board-column-count {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--track);
+  color: var(--text-muted);
+  font-size: var(--size-small);
+  font-weight: 700;
+}
+
+.board-column.complete .board-column-count {
+  background: var(--celebrate-bg);
+  color: var(--celebrate-text);
+}
+
+.board-cards {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin: var(--space-5) 0 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
-.criterion-row-head {
+.board-card-item {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
-.criterion-name {
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-page);
+  color: var(--text);
+  font-size: var(--size-small);
   font-weight: 600;
+  line-height: 1.35;
+  transition: border-color 150ms ease, transform 150ms ease, background-color var(--bar-duration) ease;
 }
 
-.criterion-value {
+a.board-card-item:hover {
+  border-color: var(--border-strong);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.board-card-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.board-card-check {
+  display: none;
+  flex: none;
+  color: var(--green-strong);
+  font-size: 17px;
+}
+
+.board-card-item.done {
+  border-color: #A6E3B4;
+  background: var(--celebrate-bg);
+  color: var(--celebrate-text);
+}
+
+.board-card-item.done .board-card-check {
+  display: inline-block;
+}
+
+.board-card-item.dropped {
   color: var(--text-muted);
-  font-weight: 600;
-  white-space: nowrap;
+  font-weight: 400;
 }
 
-.criterion-row.no-tasks .criterion-value {
-  font-weight: 400;
+.board-card-item.dropped .board-card-title {
+  text-decoration: line-through;
+}
+
+.board-card-item.missing {
+  border-style: dashed;
+}
+
+.board-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--person-0-bg);
+  color: var(--person-0-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.person-color-1 .board-avatar { background: var(--person-1-bg); color: var(--person-1-text); }
+.person-color-2 .board-avatar { background: var(--person-2-bg); color: var(--person-2-text); }
+.person-color-3 .board-avatar { background: var(--person-3-bg); color: var(--person-3-text); }
+.person-color-4 .board-avatar { background: var(--person-4-bg); color: var(--person-4-text); }
+
+.board-card-item.pop {
+  animation: card-pop var(--pop-duration) ease-out;
+}
+
+@keyframes card-pop {
+  0% { transform: scale(0.96); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+.board-empty {
+  font-size: var(--size-small);
+}
+
+.board-note {
+  margin-top: var(--space-3);
+  font-size: var(--size-small);
 }
 
 .dropped-note {
@@ -1428,10 +3212,6 @@ a.square:focus-visible {
     align-items: stretch;
   }
 
-  .task {
-    grid-template-columns: 1fr;
-  }
-
   .person {
     grid-template-columns: 32px minmax(0, 1fr) auto;
   }
@@ -1448,19 +3228,6 @@ a.square:focus-visible {
 
   .dashboard-head h1 {
     font-size: var(--size-title);
-  }
-
-  .task-meta {
-    align-items: stretch;
-  }
-
-  .meta-field {
-    flex: 1 1 140px;
-  }
-
-  .small-select {
-    max-width: none;
-    width: 100%;
   }
 
   .send-bar {

@@ -2,7 +2,7 @@
 
 Run from the project folder:
 
-    uv run python scripts/spike_claude.py                     # uses samples/assignment-churn.md
+    uv run python scripts/spike_claude.py                     # uses samples/assignment-room-booking.md
     uv run python scripts/spike_claude.py path/to/other.md
 
 It prints the criteria and tasks, checks them against what the app needs, and reports
@@ -33,7 +33,7 @@ def main() -> int:
         print("ANTHROPIC_API_KEY is not set. Copy .env.example to .env and fill in your key.")
         return 2
 
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "samples" / "assignment-churn.md"
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "samples" / "assignment-room-booking.md"
     if not path.exists():
         print(f"Can't find {path}. Write the sample assignment first, or pass another file.")
         return 2
@@ -72,7 +72,7 @@ def main() -> int:
         ("usable is true", plan.usable),
         ("at least one criterion", len(plan.criteria) > 0),
         ("criterion ids are c1, c2, … in order", criterion_ids == [f"c{i}" for i in range(1, len(criterion_ids) + 1)]),
-        (f"10–25 tasks (got {len(plan.tasks)})", 10 <= len(plan.tasks) <= 25),
+        (f"6–15 tasks (got {len(plan.tasks)})", 6 <= len(plan.tasks) <= 15),
         ("weights are 1–5", all(1 <= t.weight <= 5 for t in plan.tasks)),
         (f"every task points to an existing criterion{' (unknown: ' + ', '.join(unknown) + ')' if unknown else ''}", not unknown),
         (f"every criterion has a task{' (missing: ' + ', '.join(uncovered) + ')' if uncovered else ''}", not uncovered),

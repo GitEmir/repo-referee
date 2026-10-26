@@ -1,0 +1,8 @@
+{#- A round avatar: the person's GitHub picture when there is a username, with their first
+    letter underneath in case the picture can't load. Expects `name`, `github` and `size`. -#}
+<span class="avatar avatar-{{ size or 'normal' }}" aria-hidden="true">
+  <span class="avatar-letter">{{ (name or "?")[:1]|upper }}</span>
+  {% if github %}
+    <img src="https://github.com/{{ github }}.png?size=80" alt="" referrerpolicy="no-referrer" onerror="this.remove()">
+  {% endif %}
+</span>

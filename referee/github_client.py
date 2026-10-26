@@ -2,6 +2,7 @@
 
 Five small REST calls: check the repo, check who can be assigned, make sure the
 `repo-referee` label exists, create an issue, and list the Repo Referee issues.
+One more tells whose token it is, to suggest "Add yourself".
 """
 
 import os
@@ -106,6 +107,31 @@ def parse_repo_name(text: str | None) -> str | None:
     if not match or match.group(2) in (".", ".."):
         return None
     return value
+
+
+_owner_cache: dict = {}
+
+
+def token_owner() -> dict | None:
+    """Whose GitHub token is in .env: {"login", "name"}, or None when that can't be told.
+
+    Used only to suggest "Add yourself" and the profile's GitHub username, so any problem
+    just means no suggestion. A good answer is kept until the app restarts (as is .env).
+    """
+    if "owner" in _owner_cache:
+        return _owner_cache["owner"]
+    try:
+        response = requests.get(f"{API}/user", headers=_headers(), timeout=5)
+    except (GitHubError, requests.RequestException):
+        return None
+    if response.status_code != 200:
+        return None
+    data = response.json()
+    owner = {"login": data.get("login"), "name": data.get("name") or ""}
+    if owner["login"]:
+        _owner_cache["owner"] = owner
+        return owner
+    return None
 
 
 def check_repo(full_name: str) -> dict:

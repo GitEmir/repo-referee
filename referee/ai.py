@@ -52,7 +52,9 @@ Tasks:
 - Create small, concrete tasks for this one assignment only. Include nothing the \
 assignment doesn't ask for: no steps from a wider project lifecycle and no generic \
 project-management tasks.
-- Aim for about 10 to 25 tasks in total.
+- Make only the tasks the assignment really needs, each a logical piece of work one \
+teammate can pick up: usually 6 to 15 in total, fewer for a small assignment. Don't split \
+the work into tiny steps.
 - Title: short, and starting with a verb.
 - done_when: one or two sentences that tell a teammate exactly when the task is done.
 - weight: a whole number for the effort. 1 is about an hour, 2 about half a day, \

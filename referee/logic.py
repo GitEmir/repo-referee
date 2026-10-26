@@ -181,8 +181,12 @@ def adoptable_issues(issues: list[dict], project_key: str) -> dict:
     return found
 
 
-def issue_body(task: dict, criterion: dict, member: dict, default_branch: str = "main", marker: str = "") -> str:
-    """The Markdown body of the GitHub issue for one task (see spec.md > Sending Tasks to GitHub)."""
+def issue_body(task: dict, criterion: dict, member: dict, default_branch: str = "main", marker: str = "",
+               board_url: str = "") -> str:
+    """The Markdown body of the GitHub issue for one task (see spec.md > Sending Tasks to GitHub).
+
+    `board_url` is the view-only team board; with it, every issue links to everyone's progress.
+    """
     done_when = str(task.get("done_when") or "").strip() or "See the title."
     body = (
         f"**Done when:** {done_when}\n"
@@ -193,6 +197,10 @@ def issue_body(task: dict, criterion: dict, member: dict, default_branch: str = 
         f"| Criterion | {criterion['number']} · {_cell(criterion['title'])} |\n"
         f"| Chosen by | {_cell(member['name'])} (@{member['github']}) |\n"
         "\n"
+    )
+    if board_url:
+        body += f"**Team board:** [see everyone's progress]({board_url}) (view only)\n\n"
+    body += (
         "_Created by Repo Referee. Close this issue when the task is done, "
         f"or put \"Closes #\" followed by this issue's number in a commit on {default_branch}._\n"
     )
@@ -323,6 +331,35 @@ def contribution(team: list[dict], tasks: list[dict], status: dict) -> list[dict
             ],
         })
     return people
+
+
+# --- The board: one column per criterion --------------------------------------------------
+
+
+def board_cards(criteria: list[dict], tasks: list[dict], team: list[dict], status: dict) -> dict:
+    """{criterion id: cards} for the dashboard board, in task order.
+
+    Dropped tasks stay on the board but are shown muted; the totals leave them out.
+    `person_index` is the person's place in the team, so each person keeps one color.
+    """
+    names = {member["id"]: member["name"] for member in team}
+    order = {member["id"]: index for index, member in enumerate(team)}
+    cards = {criterion["id"]: [] for criterion in criteria}
+    for task in tasks:
+        if task["criterion_id"] not in cards:
+            continue
+        owner = task.get("owner_id")
+        cards[task["criterion_id"]].append({
+            "id": task["id"],
+            "issue_number": task.get("issue_number"),
+            "title": task["title"],
+            "weight": task["weight"],
+            "state": status.get(task["id"], MISSING),
+            "url": task.get("issue_url"),
+            "person": names.get(owner, "Someone"),
+            "person_index": order.get(owner, 0),
+        })
+    return cards
 
 
 # --- Feedback (spec.md > Feedback Rules) -------------------------------------------------

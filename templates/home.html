@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{#- The start page, also where the name in the header leads.
+    Nothing yet → one calm, centered question: name your project (or try the example).
+    A project open but not saved → the same calm page with "Continue your project".
+    Signed in → "Welcome back" with project tiles, "Create new project" and an example. -#}
+{% macro example_tiles() %}
+  <section class="tiles-section" aria-labelledby="examples-title">
+    <h2 class="projects-title" id="examples-title">Start from an example</h2>
+    <div class="project-grid">
+      <form method="post" action="{{ url_for('start_sample_project') }}" class="tile-form">
+        <button class="project-tile example-tile cover-example" type="submit">
+          <span class="tile-cover">
+            <span class="tile-icon" aria-hidden="true"><i class="ti ti-calendar-event"></i></span>
+            <span class="tile-stat"><span class="tile-number">4</span><span class="tile-number-label">grading criteria</span></span>
+          </span>
+          <span class="tile-body">
+            <span class="project-tile-name">Campus room booking · code assignment</span>
+            <span class="project-tile-where">A fictional coding assignment with four grading criteria</span>
+          </span>
+        </button>
+      </form>
+    </div>
+  </section>
+{% endmacro %}
+
+{% block content %}
+{% if profile %}
+  <section class="hero hero-compact">
+    <p class="hero-kicker">For student project teams</p>
+    <h1>Welcome back, {{ profile.name }}</h1>
+    <p class="lead">Pick up where your team left off, or start a project for the next assignment.</p>
+  </section>
+
+  <section class="tiles-section" aria-labelledby="projects-title">
+    <div class="projects-head">
+      <h2 class="projects-title" id="projects-title">Your projects</h2>
+    </div>
+    <div class="project-grid">
+      {% for item in my_projects %}
+        <div class="tile-wrap">
+        <form method="post" action="{{ url_for('open_saved_project', key=item.key) }}" class="tile-form">
+          <button class="project-tile cover-{{ loop.index0 % 6 }}{% if item.is_open %} is-open{% endif %}" type="submit">
+            <span class="tile-cover">
+              <span class="tile-icon" aria-hidden="true"><i class="ti ti-{{ item.icon }}"></i></span>
+              <span class="tile-stat"><span class="tile-number">{{ item.number }}</span><span class="tile-number-label">{{ item.label }}</span></span>
+            </span>
+            <span class="tile-body">
+              <span class="project-tile-name">{{ item.name }}</span>
+              <span class="project-tile-where">{{ item.meta }}</span>
+              {% if item.is_open %}<span class="tile-pill">Open now</span>{% endif %}
+            </span>
+          </button>
+        </form>
+        {#- Delete: behind "⋯", with the consequence spelled out before the button. -#}
+        <details class="tile-menu">
+          <summary aria-label="More options for {{ item.name }}" title="More options"><i class="ti ti-dots" aria-hidden="true"></i></summary>
+          <div class="tile-menu-box">
+            <p><strong>Delete this project?</strong> It leaves "Your projects". Its issues in GitHub stay.</p>
+            <form method="post" action="{{ url_for('delete_saved_project', key=item.key) }}">
+              <button class="button small danger" type="submit"><i class="ti ti-trash" aria-hidden="true"></i> Delete project</button>
+            </form>
+          </div>
+        </details>
+        </div>
+      {% endfor %}
+      <form method="post" action="{{ url_for('start_project') }}" class="tile-form">
+        <button class="project-tile new-tile" type="submit">
+          <span class="new-tile-plus" aria-hidden="true"><i class="ti ti-plus"></i></span>
+          <span class="project-tile-name">Create new project</span>
+        </button>
+      </form>
+    </div>
+  </section>
+  {{ example_tiles() }}
+{% else %}
+  <section class="start-center">
+    <p class="hero-kicker">For student project teams</p>
+    <h1>Turn your group assignment into fair GitHub tasks</h1>
+    <p class="start-lead">AI drafts the tasks, your team picks who does what, and GitHub keeps the score. No extra app to keep up to date by hand.</p>
+
+    {% if has_project %}
+      <div class="start-continue">
+        <p class="start-label">Your project</p>
+        <p class="start-project-name">{{ project.project.name }}</p>
+        <p class="muted">{{ where }}</p>
+        <a class="button" href="{{ continue_url }}">Continue your project <i class="ti ti-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      <p class="start-alt muted"><a href="{{ url_for('save_project', next=url_for('index')) }}">Save it to a profile</a> to find it again later and start more projects.</p>
+    {% else %}
+      <form method="post" action="{{ url_for('setup_project') }}" class="start-form" novalidate>
+        <label class="visually-hidden" for="project-name">Project name</label>
+        <input type="text" id="project-name" name="name" maxlength="80" placeholder="Name your project…" autocomplete="off" autofocus>
+        <button class="button" type="submit">Start <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+      </form>
+      <div class="start-alt muted">
+        <span>or</span>
+        <form method="post" action="{{ url_for('start_sample_project') }}">
+          <button class="link-button" type="submit">try the example assignment</button>
+        </form>
+        {% if account.has_profiles %}
+          <span aria-hidden="true">·</span>
+          <a href="{{ url_for('signin') }}">sign in to your projects</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <ol class="start-steps" aria-label="How Repo Referee works">
+    <li class="start-step">
+      <span class="start-step-icon s1" aria-hidden="true"><i class="ti ti-clipboard-text"></i></span>
+      <p class="start-step-title">Paste the assignment</p>
+      <p class="start-step-text">AI turns the grading criteria into small tasks.</p>
+    </li>
+    <li class="start-step">
+      <span class="start-step-icon s2" aria-hidden="true"><i class="ti ti-users"></i></span>
+      <p class="start-step-title">Pick tasks fairly</p>
+      <p class="start-step-text">Everyone chooses, with a fair share per person.</p>
+    </li>
+    <li class="start-step">
+      <span class="start-step-icon s3" aria-hidden="true"><i class="ti ti-layout-kanban"></i></span>
+      <p class="start-step-title">Watch the board follow GitHub</p>
+      <p class="start-step-text">No status to update by hand: close an issue and its card turns green.</p>
+    </li>
+  </ol>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // One project menu open at a time; a click elsewhere or Escape closes it.
+  (function () {
+    var menus = Array.prototype.slice.call(document.querySelectorAll(".tile-menu"));
+    function closeAll(except) {
+      menus.forEach(function (menu) { if (menu !== except) { menu.open = false; } });
+    }
+    menus.forEach(function (menu) {
+      menu.addEventListener("toggle", function () { if (menu.open) { closeAll(menu); } });
+    });
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest(".tile-menu")) { closeAll(); }
+    });
+    document.addEventListener("keydown", function (event) {
+      var open = menus.filter(function (menu) { return menu.open; })[0];
+      if (event.key === "Escape" && open) {
+        open.open = false;
+        open.querySelector("summary").focus();
+      }
+    });
+  })();
+</script>
+{% endblock %}

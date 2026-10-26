@@ -1,0 +1,16 @@
+{#- The live team on the team step: one face per person (their GitHub picture, with their first
+    letter underneath), no limit, and a plus at the end that jumps to the name field. -#}
+<aside class="team-strip" aria-label="Your team">
+  <ul class="team-faces">
+    {% for member in project.team %}
+      <li title="{{ member.name }} · @{{ member.github }}">
+        {% with name=member.name, github=member.github, size="normal" %}{% include "_avatar.html" %}{% endwith %}
+      </li>
+    {% endfor %}
+    <li>
+      <a class="face-add" href="#member-name" aria-label="Add a person" onclick="document.getElementById('member-name').focus(); return false;">
+        <i class="ti ti-plus" aria-hidden="true"></i>
+      </a>
+    </li>
+  </ul>
+</aside>

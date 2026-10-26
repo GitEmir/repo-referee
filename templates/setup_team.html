@@ -2,13 +2,28 @@
 {% block content %}
 <section class="card">
   <h1>Who's on the team?</h1>
-  <p class="lead">Add everyone with their GitHub username, so their tasks can be assigned to them in GitHub. Most teams have about five people.</p>
+  <p class="lead">Add everyone with their GitHub username, so their tasks can be assigned to them in GitHub.</p>
+
+  {% if suggestion %}
+    <form method="post" action="{{ url_for('add_member') }}" class="suggest" novalidate>
+      {% with name=suggestion.name or suggestion.login, github=suggestion.login, size="normal" %}{% include "_avatar.html" %}{% endwith %}
+      <div class="suggest-text">
+        <p class="suggest-title">Add yourself</p>
+        <p class="suggest-sub muted"><span class="mono">@{{ suggestion.login }}</span> · from your GitHub token</p>
+      </div>
+      <input type="hidden" name="github" value="{{ suggestion.login }}">
+      <label class="visually-hidden" for="suggest-name">Your name</label>
+      <input class="input suggest-name" type="text" id="suggest-name" name="name" value="{{ suggestion.name }}" maxlength="60"
+             placeholder="Your name" autocomplete="name">
+      <button class="button small" type="submit"><i class="ti ti-user-plus" aria-hidden="true"></i> Add me</button>
+    </form>
+  {% endif %}
 
   {% if project.team %}
     <ul class="member-list" aria-label="Team members">
       {% for member in project.team %}
         <li class="member">
-          <span class="avatar" aria-hidden="true">{{ member.name[:1]|upper }}</span>
+          {% with name=member.name, github=member.github, size="normal" %}{% include "_avatar.html" %}{% endwith %}
           <span class="member-name">{{ member.name }}</span>
           <span class="mono muted member-github">@{{ member.github }}</span>
           <form method="post" action="{{ url_for('remove_member', member_id=member.id) }}">
@@ -31,7 +46,17 @@
              {% if error_field == "name" %}aria-invalid="true" aria-describedby="member-error"{% endif %}>
     </div>
     <div class="field">
-      <label class="label" for="member-github">GitHub username</label>
+      <span class="label-row">
+        <label class="label" for="member-github">GitHub username</label>
+        <details class="help-pop">
+          <summary aria-label="Where do I find a GitHub username?">?</summary>
+          <div class="help-pop-body">
+            <p class="help-pop-title">Your username</p>
+            <p class="help-pop-url"><span class="muted">github.com/</span><strong>sara-dev</strong></p>
+            <p class="muted">It's the part after github.com/, not an email or a full name.</p>
+          </div>
+        </details>
+      </span>
       <span class="input-prefix">
         <span class="prefix mono" aria-hidden="true">@</span>
         <input class="input mono" type="text" id="member-github" name="github" value="{{ form.github }}" maxlength="40"
@@ -45,11 +70,29 @@
     <p class="message heads-up" id="member-error" role="alert"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ error }}</span></p>
   {% endif %}
 
+  <p class="team-note muted"><i class="ti ti-info-circle" aria-hidden="true"></i> You can add people until you send the tasks.</p>
+
   {% if project.team %}
     <div class="actions split">
-      <span class="muted">{{ project.team|length }} {{ "person" if project.team|length == 1 else "people" }} on the team</span>
+      <span></span>
       <a class="button" href="{{ url_for('setup_assignment') }}">Continue <i class="ti ti-arrow-right" aria-hidden="true"></i></a>
     </div>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // The "?" next to GitHub username closes again on a click elsewhere or on Escape.
+  (function () {
+    var pop = document.querySelector(".help-pop");
+    if (!pop) { return; }
+    document.addEventListener("click", function (event) {
+      if (pop.open && !pop.contains(event.target)) { pop.open = false; }
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && pop.open) { pop.open = false; pop.querySelector("summary").focus(); }
+    });
+  })();
+</script>
 {% endblock %}

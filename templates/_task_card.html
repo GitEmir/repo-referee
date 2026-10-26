@@ -1,4 +1,4 @@
-{#- One editable task on the review page. review.js reads the fields of every card to autosave.
+{#- One task card on the review board. review.js reads the fields of every card to autosave.
     `key` makes the element IDs unique; new cards get a key like "new-3" from review.js.
     A task that is already an issue in GitHub is shown locked: it can't change any more. -#}
 {% set issued = task.issue_number %}
@@ -8,21 +8,16 @@
       <i class="ti ti-circle-check" aria-hidden="true"></i> #{{ task.issue_number }} in GitHub
     </a>
   {% endif %}
-  <div class="task-fields">
-    <label class="visually-hidden" for="title-{{ key }}">Task title</label>
-    <input class="inline-input task-title-input" type="text" id="title-{{ key }}" name="title" value="{{ task.title }}"
-           maxlength="200" placeholder="What needs to be done?" autocomplete="off"{% if issued %} readonly{% endif %}>
-    <label class="inline-label" for="done-{{ key }}">Done when</label>
-    <textarea class="inline-input task-done-input" id="done-{{ key }}" name="done_when" rows="2" maxlength="1000"
-              placeholder="When can this issue be closed?"{% if issued %} readonly{% endif %}>{{ task.done_when }}</textarea>
-  </div>
+  <label class="visually-hidden" for="title-{{ key }}">Task title</label>
+  <textarea class="inline-input task-title-input" id="title-{{ key }}" name="title" rows="2" maxlength="200"
+            placeholder="What needs to be done?"{% if issued %} readonly{% endif %}>{{ task.title }}</textarea>
 
-  <div class="task-meta">
+  <div class="task-row">
     <fieldset class="weight-control">
-      <legend class="inline-label">Weight</legend>
+      <legend class="visually-hidden">Weight</legend>
       <div class="segments">
         {% for weight in range(1, 6) %}
-          <label class="segment" title="{{ ['About an hour', 'About half a day', 'About a day', 'About two days', 'Several days'][weight - 1] }}">
+          <label class="segment" title="Weight {{ weight }}: {{ ['about an hour', 'about half a day', 'about a day', 'about two days', 'several days'][weight - 1] }}">
             <input type="radio" name="weight-{{ key }}" value="{{ weight }}" data-field="weight" {% if task.weight == weight %}checked{% endif %}{% if issued %} disabled{% endif %}>
             <span>{{ weight }}</span>
           </label>
@@ -30,36 +25,65 @@
       </div>
     </fieldset>
 
-    <div class="meta-field">
+    {#- Who does it: a face that opens a row of the team's faces, each with their points so far.
+        The hidden select keeps the choice, so saving reads it like any other field. -#}
+    <div class="owner-pick">
+      <button class="owner-button" type="button" aria-expanded="false" aria-controls="who-{{ key }}"{% if issued %} disabled{% endif %}>
+        <span class="owner-avatar" aria-hidden="true">+</span>
+        <span class="owner-name">Who?</span>
+      </button>
+      <select class="owner-select" id="owner-{{ key }}" name="owner_id" hidden tabindex="-1" aria-hidden="true"{% if issued %} disabled{% endif %}>
+        <option value="">Who?</option>
+        {% for member in project.team %}
+          <option value="{{ member.id }}" {% if member.id == task.owner_id %}selected{% endif %}>{{ member.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  {% if not issued %}
+  <div class="who-pop" id="who-{{ key }}" role="group" aria-label="Who does this task?" hidden>
+    {% for member in project.team %}
+      <button class="who-option" type="button" data-member-id="{{ member.id }}" aria-pressed="false" title="{{ member.name }}">
+        <span class="owner-avatar pc-{{ loop.index0 % 5 }}" aria-hidden="true">{{ (member.name|trim)[:1]|upper }}</span>
+        <span class="who-name">{{ member.name }}</span>
+        <span class="who-points"></span>
+      </button>
+    {% endfor %}
+    <button class="who-option who-none" type="button" data-member-id="" aria-pressed="false" title="No one yet">
+      <span class="owner-avatar" aria-hidden="true"><i class="ti ti-x"></i></span>
+      <span class="who-name">No one</span>
+      <span class="who-points"></span>
+    </button>
+  </div>
+  {% endif %}
+
+  <details class="task-details">
+    <summary><i class="ti ti-chevron-right" aria-hidden="true"></i> Details</summary>
+    <div class="details-body">
+      <label class="inline-label" for="done-{{ key }}">Done when</label>
+      <textarea class="inline-input task-done-input" id="done-{{ key }}" name="done_when" rows="2" maxlength="1000"
+                placeholder="When can this issue be closed?"{% if issued %} readonly{% endif %}>{{ task.done_when }}</textarea>
+
       <label class="inline-label" for="crit-{{ key }}">Criterion</label>
       <select class="input select small-select" id="crit-{{ key }}" name="criterion_id"{% if issued %} disabled{% endif %}>
         {% for criterion in project.criteria %}
           <option value="{{ criterion.id }}" {% if criterion.id == task.criterion_id %}selected{% endif %}>{{ criterion.number }} · {{ criterion.title }}</option>
         {% endfor %}
       </select>
-    </div>
 
-    <div class="meta-field">
-      <label class="inline-label" for="owner-{{ key }}">Who does this?</label>
-      <select class="input select small-select owner-select" id="owner-{{ key }}" name="owner_id"{% if issued %} disabled{% endif %}>
-        <option value="">Choose a person</option>
-        {% for member in project.team %}
-          <option value="{{ member.id }}" {% if member.id == task.owner_id %}selected{% endif %}>{{ member.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    {% if not issued %}
-    <div class="task-delete">
-      <button class="icon-button delete-open" type="button" aria-label="Delete this task" title="Delete this task">
-        <i class="ti ti-trash" aria-hidden="true"></i>
-      </button>
-      <div class="delete-confirm" hidden>
-        <span>Delete this task?</span>
-        <button class="button small delete-yes" type="button">Yes</button>
-        <button class="button secondary small delete-no" type="button">No</button>
+      {% if not issued %}
+      <div class="task-delete">
+        <button class="icon-button delete-open" type="button" aria-label="Delete this task" title="Delete this task">
+          <i class="ti ti-trash" aria-hidden="true"></i>
+        </button>
+        <div class="delete-confirm" hidden>
+          <span>Delete this task?</span>
+          <button class="button small delete-yes" type="button">Yes</button>
+          <button class="button secondary small delete-no" type="button">No</button>
+        </div>
       </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
+  </details>
 </article>

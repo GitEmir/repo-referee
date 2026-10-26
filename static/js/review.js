@@ -63,8 +63,6 @@
       if (task.owner_id && chosen.hasOwnProperty(task.owner_id)) { chosen[task.owner_id] += task.weight; }
     });
     var shareText = formatPoints(share);
-    document.getElementById("fair-share-sum").textContent =
-      total + " points ÷ " + team.length + (team.length === 1 ? " person" : " people") + " = " + shareText + " points each";
     team.forEach(function (member) {
       var row = document.querySelector('.share-row[data-member-id="' + member.id + '"]');
       if (!row) { return; }
@@ -79,6 +77,84 @@
       var note = row.querySelector(".share-heads-up");
       note.hidden = !over;
       note.textContent = over ? member.name + " is now at " + points + " / " + shareText + ". Someone else has room for this task." : "";
+    });
+    updateOwnerAvatars(chosen, share);
+    updateColumnCounts();
+  }
+
+  // --- The board: who does each task, and the totals per column ----------------------------
+
+  var PERSON_COLORS = 5; // style.css has .pc-0 … .pc-4, the same colors as on the dashboard
+
+  // Each card's face shows who does the task (a colored first letter). Its row of faces shows
+  // everyone's points so far against the fair share, so the team sees who still has room.
+  function updateOwnerAvatars(chosen, share) {
+    var shareText = formatPoints(share);
+    cards().forEach(function (card) {
+      var select = field(card, "owner_id");
+      var button = card.querySelector(".owner-button");
+      if (!select || !button) { return; }
+      var index = -1;
+      team.forEach(function (member, i) { if (member.id === select.value) { index = i; } });
+      var avatar = button.querySelector(".owner-avatar");
+      avatar.textContent = index >= 0 ? team[index].name.trim().slice(0, 1).toUpperCase() : "+";
+      avatar.className = "owner-avatar" + (index >= 0 ? " pc-" + (index % PERSON_COLORS) : "");
+      button.querySelector(".owner-name").textContent = index >= 0 ? team[index].name : "Who?";
+      button.classList.toggle("unassigned", index < 0);
+      button.setAttribute("aria-label", index >= 0 ? "Done by " + team[index].name + ". Choose someone else" : "Choose who does this");
+      Array.prototype.forEach.call(card.querySelectorAll(".who-option"), function (option) {
+        var id = option.dataset.memberId;
+        var picked = id === select.value;
+        option.setAttribute("aria-pressed", picked ? "true" : "false");
+        if (!id) { return; }
+        var points = chosen[id] || 0;
+        option.querySelector(".who-points").textContent = points + " / " + shareText;
+        option.classList.toggle("full", !picked && share > 0 && points >= share - 1e-9);
+        option.setAttribute("aria-label", option.title + ", " + points + " of " + shareText + " points");
+      });
+    });
+  }
+
+  // --- Choosing who does a task: the row of faces on a card ---------------------------------
+
+  function closeWhoPops(except) {
+    Array.prototype.forEach.call(form.querySelectorAll(".who-pop:not([hidden])"), function (pop) {
+      if (pop === except) { return; }
+      pop.hidden = true;
+      pop.closest(".task").querySelector(".owner-button").setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function toggleWhoPop(button) {
+    var pop = button.closest(".task").querySelector(".who-pop");
+    if (!pop) { return; }
+    var opening = pop.hidden;
+    closeWhoPops(pop);
+    pop.hidden = !opening;
+    button.setAttribute("aria-expanded", opening ? "true" : "false");
+    if (opening) {
+      (pop.querySelector('.who-option[aria-pressed="true"]') || pop.querySelector(".who-option")).focus();
+    }
+  }
+
+  function chooseOwner(option) {
+    var card = option.closest(".task");
+    var select = field(card, "owner_id");
+    select.value = option.dataset.memberId;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    closeWhoPops();
+    card.querySelector(".owner-button").focus();
+  }
+
+  function updateColumnCounts() {
+    Array.prototype.forEach.call(form.querySelectorAll(".criterion-group"), function (group) {
+      var groupCards = Array.prototype.slice.call(group.querySelectorAll(".task"));
+      var points = groupCards.reduce(function (sum, card) { return sum + weightOf(card); }, 0);
+      var count = group.querySelector(".crit-count");
+      if (count) {
+        count.textContent = groupCards.length + (groupCards.length === 1 ? " task" : " tasks") +
+          " · " + points + (points === 1 ? " point" : " points");
+      }
     });
   }
 
@@ -131,7 +207,11 @@
     var target = event.target.closest("button");
     if (!target || !form.contains(target)) { return; }
     var card = target.closest(".task");
-    if (target.classList.contains("add-task")) {
+    if (target.classList.contains("owner-button")) {
+      toggleWhoPop(target);
+    } else if (target.classList.contains("who-option")) {
+      chooseOwner(target);
+    } else if (target.classList.contains("add-task")) {
       addTask(target.dataset.criterionId);
     } else if (target.classList.contains("delete-open")) {
       card.querySelector(".delete-confirm").hidden = false;
@@ -347,7 +427,7 @@
     var firstProblem = found.noPerson[0] || found.noTitle[0];
     if (firstProblem) {
       firstProblem.scrollIntoView({ behavior: "smooth", block: "center" });
-      var focusTarget = found.noPerson[0] ? field(firstProblem, "owner_id") : field(firstProblem, "title");
+      var focusTarget = found.noPerson[0] ? firstProblem.querySelector(".owner-button") : field(firstProblem, "title");
       if (focusTarget) { focusTarget.focus({ preventScroll: true }); }
       return;
     }
@@ -366,6 +446,18 @@
     if (event.target.matches("input[type=text], textarea")) { scheduleSave(); }
   });
   form.addEventListener("submit", function (event) { event.preventDefault(); });
+  // A title is one line, even though its box wraps on the narrow board.
+  form.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" && event.target.matches(".task-title-input")) { event.preventDefault(); }
+    if (event.key === "Escape" && event.target.closest(".who-pop")) {
+      closeWhoPops();
+      event.target.closest(".task").querySelector(".owner-button").focus();
+    }
+  });
+  // A click anywhere else closes an open row of faces.
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest(".owner-pick, .who-pop")) { closeWhoPops(); }
+  });
   window.addEventListener("beforeunload", function (event) {
     if (saveTimer || saveRunning) {
       event.preventDefault();

@@ -1,22 +1,23 @@
-{#- Step indicator: "Step 2 of 5 · Team members" with five dots.
+{#- Step bar: every setup step by name, then the dashboard. Done steps show a check.
     Steps whose data exists stay reachable until the tasks are sent. -#}
 {% set labels = {"done": "done", "open": "next", "current": "current step", "future": "not available yet"} %}
-<nav class="steps" aria-label="Setup steps">
-  <p class="steps-label">Step {{ step }} of {{ steps|length }} · {{ steps[step - 1].title }}</p>
-  <ol class="steps-dots">
+{% set on_dashboard = step == "dashboard" %}
+<nav class="stepbar" aria-label="Setup steps">
+  <ol>
     {% for s in steps %}
-      {% set state = "current" if s.number == step else ("done" if s.number < reachable else ("open" if s.number == reachable else "future")) %}
-      <li>
+      {% set state = "done" if on_dashboard else ("current" if s.number == step else ("done" if s.number < reachable else ("open" if s.number == reachable else "future"))) %}
+      {% set inner %}<span class="stepbar-mark" aria-hidden="true">{% if state == "done" %}<i class="ti ti-check"></i>{% else %}{{ s.number }}{% endif %}</span><span class="stepbar-title">{{ s.title }}</span><span class="visually-hidden"> ({{ labels[state] }})</span>{% endset %}
+      <li class="stepbar-item {{ state }}">
         {% if state in ("done", "open") and not steps_locked %}
-          <a class="dot {{ state }}" href="{{ url_for(s.endpoint) }}">
-            <span class="visually-hidden">Step {{ s.number }}: {{ s.title }} ({{ labels[state] }})</span>
-          </a>
+          <a href="{{ url_for(s.endpoint) }}">{{ inner }}</a>
         {% else %}
-          <span class="dot {{ state }}"{% if state == "current" %} aria-current="step"{% endif %}>
-            <span class="visually-hidden">Step {{ s.number }}: {{ s.title }} ({{ labels[state] }})</span>
-          </span>
+          <span{% if state == "current" %} aria-current="step"{% endif %}>{{ inner }}</span>
         {% endif %}
       </li>
     {% endfor %}
+    {#- During setup the dashboard is only a destination, so it shows just its icon there. -#}
+    <li class="stepbar-item {{ 'current' if on_dashboard else 'future icon-only' }}">
+      <span{% if on_dashboard %} aria-current="step"{% else %} title="Dashboard: after the tasks are sent"{% endif %}><span class="stepbar-mark" aria-hidden="true"><i class="ti ti-layout-kanban"></i></span><span class="stepbar-title{% if not on_dashboard %} visually-hidden{% endif %}">Dashboard</span><span class="visually-hidden"> ({{ labels['current' if on_dashboard else 'future'] }})</span></span>
+    </li>
   </ol>
 </nav>

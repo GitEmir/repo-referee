@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{#- "Save your project": create a profile (a name and a GitHub username), or sign in to an
+    existing one. The open project is saved to it right away. The password field only shows what
+    a real account would ask for: it has no name, so the browser never sends it to the app. -#}
+{% block content %}
+<section class="card account-card">
+  <h1>Save your project</h1>
+  <p class="lead">Create a profile to keep <strong>{{ project.project.name }}</strong>, find it again under "Your projects" and start more projects.</p>
+
+  <form method="post" class="stack" novalidate>
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="profile-preview">
+      {% with name=form.name or "?", github=form.github, size="large" %}{% include "_avatar.html" %}{% endwith %}
+      <div>
+        <p class="profile-preview-name">{{ form.name or "Your name" }}</p>
+        {% if form.github %}<p class="mono muted">@{{ form.github }}{% if form.github == token_login %} · from your GitHub token{% endif %}</p>{% endif %}
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="profile-name">Your name</label>
+      <input class="input" type="text" id="profile-name" name="name" value="{{ form.name }}" maxlength="60"
+             placeholder="Emir" autocomplete="name"{% if error_field != "github" %} autofocus{% endif %}
+             {% if error_field == "name" %}aria-invalid="true" aria-describedby="profile-error"{% endif %}>
+    </div>
+    <div class="field">
+      <label class="label" for="profile-github">GitHub username</label>
+      <span class="input-prefix">
+        <span class="prefix mono" aria-hidden="true">@</span>
+        <input class="input mono" type="text" id="profile-github" name="github" value="{{ form.github }}" maxlength="40"
+               placeholder="sara-dev" autocomplete="off" autocapitalize="off" spellcheck="false"
+               {% if error_field == "github" %}autofocus aria-invalid="true" aria-describedby="profile-error"{% endif %}>
+      </span>
+    </div>
+    <div class="field">
+      <label class="label" for="profile-password">Password</label>
+      <input class="input" type="password" id="profile-password" placeholder="At least 8 characters"
+             autocomplete="off">
+    </div>
+    {% if error %}
+      <p class="message heads-up" id="profile-error" role="alert"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ error }}</span></p>
+    {% endif %}
+    <div class="actions">
+      <button class="button" type="submit"><i class="ti ti-device-floppy" aria-hidden="true"></i> Create profile and save</button>
+      <a class="button secondary" href="{{ next_url }}">Not now</a>
+    </div>
+  </form>
+
+  {% if profiles %}
+    <div class="account-or">
+      <p class="label">Or save it to an existing profile</p>
+      <ul class="profile-list">
+        {% for p in profiles %}
+          <li>
+            <form method="post" action="{{ url_for('signin_as', profile_id=p.id) }}">
+              <input type="hidden" name="next" value="{{ next_url }}">
+              <button class="profile-choice" type="submit">
+                {% with name=p.name, github=p.github, size="normal" %}{% include "_avatar.html" %}{% endwith %}
+                <span>{{ p.name }}{% if p.github %} <span class="mono muted">@{{ p.github }}</span>{% endif %}</span>
+                <i class="ti ti-arrow-right" aria-hidden="true"></i>
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+</section>
+{% endblock %}

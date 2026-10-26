@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="card review-intro">
-  <h1>Review and choose tasks</h1>
-  <p class="lead">Change anything Claude proposed, then let everyone pick the tasks that suit them. Every task needs a person before the tasks go to GitHub.</p>
+<section class="review-head">
+  <div>
+    <h1>Review and choose tasks</h1>
+    <p class="lead">Change anything the AI proposed, then let everyone pick the tasks that suit them. Every task needs a person before the tasks go to GitHub.</p>
+  </div>
 
   <div class="fair-share" id="fair-share" aria-labelledby="fair-share-title">
     <div class="fair-share-head">
       <h2 id="fair-share-title">Fair share</h2>
-      <p class="muted" id="fair-share-sum">{{ total_points }} points ÷ {{ project.team|length }} {{ "person" if project.team|length == 1 else "people" }} = {{ share }} points each</p>
     </div>
     <ul class="share-list">
       {% for row in share_rows %}
+        {% set member = project.team|selectattr("id", "equalto", row.id)|first %}
         <li class="share-row{% if row.over %} over{% endif %}" data-member-id="{{ row.id }}">
+          {% with name=row.name, github=member.github if member else None, size="small" %}{% include "_avatar.html" %}{% endwith %}
           <div class="share-label">
             <span class="share-name">{{ row.name }}</span>
             <span class="share-value">{{ row.chosen }} / {{ row.share }}</span>
@@ -25,25 +28,93 @@
   </div>
 </section>
 
-<form id="review" class="review" novalidate>
-  {% for group in groups %}
-    <section class="card criterion-group" data-criterion-id="{{ group.criterion.id }}" aria-labelledby="crit-head-{{ group.criterion.id }}">
-      <header class="criterion-head">
-        <h2 id="crit-head-{{ group.criterion.id }}">Criterion {{ group.criterion.number }} · {{ group.criterion.title }}</h2>
-        {% if group.criterion.description %}<p class="muted">{{ group.criterion.description }}</p>{% endif %}
-      </header>
-
-      <div class="task-list">
-        {% for task in group.tasks %}
-          {% with key = task.id %}{% include "_task_card.html" %}{% endwith %}
-        {% endfor %}
+{#- How choosing works: open on a first visit, so nobody is thrown in without an explanation.
+    Closing it is remembered in this browser; "How this works" opens it again. -#}
+<section class="guide" id="guide" aria-labelledby="guide-title">
+  <div class="guide-head">
+    <h2 id="guide-title">New here? How choosing works</h2>
+    <button class="icon-button guide-close" type="button" id="guide-close" aria-label="Close the explanation" title="Close">
+      <i class="ti ti-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <ol class="guide-steps">
+    <li>
+      <span class="guide-num" aria-hidden="true">1</span>
+      <div>
+        <strong>Check the tasks</strong>
+        <p>The AI drafted them from the grading criteria. Change any title or weight, move a task to another criterion under "Details", or add and delete tasks.</p>
       </div>
-      <p class="empty criterion-empty" {% if group.tasks %}hidden{% endif %}>Criterion {{ group.criterion.number }} doesn't have a task yet.</p>
-      <button class="button secondary small add-task" type="button" data-criterion-id="{{ group.criterion.id }}">
-        <i class="ti ti-plus" aria-hidden="true"></i> Add task
-      </button>
-    </section>
-  {% endfor %}
+    </li>
+    <li>
+      <span class="guide-num" aria-hidden="true">2</span>
+      <div>
+        <strong>Pick your tasks</strong>
+        <p>The numbers 1 to 5 are the weight, the effort: 1 ≈ an hour, 3 ≈ a day, 5 ≈ several days. Your fair share is all points ÷ the team size, so "2 / 6" means you chose 2 of your fair 6 points.</p>
+      </div>
+    </li>
+    <li>
+      <span class="guide-num" aria-hidden="true">3</span>
+      <div>
+        <strong>Send to GitHub</strong>
+        <p>Once every task has a person, send them: each task becomes an issue assigned to that person. From then on, closing issues in GitHub moves the board.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+<button class="link-button guide-open" type="button" id="guide-open" hidden>
+  <i class="ti ti-help-circle" aria-hidden="true"></i> How this works
+</button>
+<script>
+  // Runs right away, so a closed explanation never flashes open.
+  (function () {
+    var KEY = "referee-review-guide";
+    var guide = document.getElementById("guide");
+    var opener = document.getElementById("guide-open");
+    var closer = document.getElementById("guide-close");
+    function show(open) {
+      guide.hidden = !open;
+      opener.hidden = open;
+    }
+    var closed = false;
+    try { closed = localStorage.getItem(KEY) === "closed"; } catch (error) { /* no storage: keep it open */ }
+    show(!closed);
+    closer.addEventListener("click", function () {
+      show(false);
+      try { localStorage.setItem(KEY, "closed"); } catch (error) { /* only this visit, then */ }
+      opener.focus();
+    });
+    opener.addEventListener("click", function () {
+      show(true);
+      try { localStorage.removeItem(KEY); } catch (error) { /* fine */ }
+      closer.focus();
+    });
+  })();
+</script>
+
+<form id="review" class="review" novalidate>
+  {#- One column per grading criterion, like the dashboard board; it scrolls sideways when
+      the columns don't fit. -#}
+  <div class="review-board">
+    {% for group in groups %}
+      <section class="criterion-group col-color-{{ loop.index0 % 6 }}" data-criterion-id="{{ group.criterion.id }}" aria-labelledby="crit-head-{{ group.criterion.id }}">
+        <header class="criterion-head">
+          <h2 id="crit-head-{{ group.criterion.id }}"><span class="crit-num" aria-hidden="true">{{ group.criterion.number }}</span><span><span class="visually-hidden">Criterion {{ group.criterion.number }} · </span>{{ group.criterion.title }}</span></h2>
+          {% if group.criterion.description %}<p class="crit-desc" title="{{ group.criterion.description }}">{{ group.criterion.description }}</p>{% endif %}
+          <span class="crit-count">{{ group.tasks|length }} {{ "task" if group.tasks|length == 1 else "tasks" }}</span>
+        </header>
+
+        <div class="task-list">
+          {% for task in group.tasks %}
+            {% with key = task.id %}{% include "_task_card.html" %}{% endwith %}
+          {% endfor %}
+        </div>
+        <p class="empty criterion-empty" {% if group.tasks %}hidden{% endif %}>Criterion {{ group.criterion.number }} doesn't have a task yet.</p>
+        <button class="button secondary small add-task" type="button" data-criterion-id="{{ group.criterion.id }}">
+          <i class="ti ti-plus" aria-hidden="true"></i> Add task
+        </button>
+      </section>
+    {% endfor %}
+  </div>
 
   <div class="send-bar">
     <p class="save-status muted" id="save-status" role="status" aria-live="polite"></p>

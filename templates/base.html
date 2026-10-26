@@ -10,25 +10,168 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.48.0/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {#- Show a page only once all of it has arrived, so the transition has the whole new page. -#}
+  <link rel="expect" href="#page-end" blocking="render">
+  <script>
+    // Page transitions. The part you work in (the "workspace") slides out of the old page while
+    // the new one slides in, and the backdrop shapes glide on from where the last page left them.
+    (function () {
+      var ORDER = ["start", "1", "2", "3", "4", "5", "dashboard"];
+      var root = document.documentElement;
+
+      // Runs at the top of <body>, before the first paint, and again when the back button brings
+      // a page back from memory: start the shapes where the previous page left them (or off
+      // screen on a first visit), then let them glide to this page's spots.
+      window.enterScene = function () {
+        var backdrop = document.querySelector(".backdrop");
+        var now = backdrop.dataset.scene;
+        var before = null;
+        // One shared clock, so the drift carries on across pages instead of restarting.
+        root.style.setProperty("--drift-clock", -(Date.now() / 1000 % 3600) + "s");
+        try {
+          before = sessionStorage.getItem("referee-scene");
+          sessionStorage.setItem("referee-scene", now);
+        } catch (error) { return; }
+        if (before === now) { return; }
+        if (!before || ORDER.indexOf(before) < 0) {
+          root.dataset.enter = "first";
+          before = "offstage";
+        } else {
+          root.dataset.enter = ORDER.indexOf(now) < ORDER.indexOf(before) ? "back" : "forward";
+        }
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) { return; }
+        // Read every shape's spot on the previous page, switch to this page, and animate from
+        // the old spot to the new one, each shape at its own pace (--glide, --wait).
+        var shapes = backdrop.querySelectorAll(".shape");
+        backdrop.dataset.scene = before;
+        var from = Array.prototype.map.call(shapes, function (shape) {
+          var style = getComputedStyle(shape);
+          return { translate: style.translate, rotate: style.rotate };
+        });
+        backdrop.dataset.scene = now;
+        shapes.forEach(function (shape, index) {
+          var style = getComputedStyle(shape);
+          shape.animate([from[index], { translate: style.translate, rotate: style.rotate }], {
+            duration: (parseFloat(style.getPropertyValue("--glide")) || 1.6) * 1000,
+            delay: (parseFloat(style.getPropertyValue("--wait")) || 0) * 1000,
+            easing: "cubic-bezier(0.45, 0.05, 0.2, 1.06)",
+            fill: "backwards"
+          });
+        });
+      };
+
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted) { window.enterScene(); }
+      });
+      // Leaving: this page's workspace is the one that slides out.
+      window.addEventListener("pageswap", function (event) {
+        var workspace = document.querySelector(".workspace");
+        if (event.viewTransition && workspace) { workspace.style.viewTransitionName = "workspace-out"; }
+      });
+      // Arriving: only a new step gets the transition (enterScene marks it with data-enter); a
+      // button that keeps you on the same step, like adding a teammate, just shows the result.
+      // When the browser runs the transition, the plain slide-in (the fallback) stays off.
+      window.addEventListener("pagereveal", function (event) {
+        var workspace = document.querySelector(".workspace");
+        if (workspace) { workspace.style.viewTransitionName = ""; }
+        if (event.viewTransition && !root.dataset.enter) { event.viewTransition.skipTransition(); }
+        if (event.viewTransition) { root.dataset.transition = "yes"; } else { delete root.dataset.transition; }
+      });
+    })();
+  </script>
 </head>
 <body>
+  {#- The backdrop: a dot grid with soft shapes that drift slowly, only in the empty space beside
+      the page. Every page picks a few shapes and a spot for each; the rest wait off screen, on
+      their own side. So on another step some shapes glide to a new spot, some fly out and new
+      ones fly in. -#}
+  {% set scene = scene_name or (step if step else "start") %}
+  <div class="backdrop" data-scene="{{ scene }}" aria-hidden="true">
+    <span class="shape shape-a from-left"></span>
+    <span class="shape shape-b from-right"></span>
+    <span class="shape shape-c from-right"></span>
+    <span class="shape shape-d from-left"></span>
+    <span class="shape shape-e from-right"></span>
+    <span class="shape shape-f from-right"></span>
+    <span class="shape shape-g from-left"></span>
+    <span class="shape shape-h from-left"></span>
+  </div>
+  <script>window.enterScene();</script>
+
   <header class="site-header">
-    <div class="container header-inner">
+    {% set layout_width = " wide" if step == 5 else (" roomy" if step in (1, 2, 3, 4) else "") %}
+    <div class="container header-inner{% block width %}{% endblock %}{{ layout_width }}">
       <a class="brand" href="{{ url_for('index') }}">
         {% include "_logo.html" %}
-        <span class="brand-name">Repo Referee</span>
+        <span class="brand-name">repo<span class="brand-slash">/</span>referee</span>
       </a>
       {% if project and project.project.name %}
-        <span class="header-sep" aria-hidden="true">/</span>
         <span class="header-project" title="{{ project.project.name }}">{{ project.project.name }}</span>
       {% endif %}
+      <div class="header-account">
+        {% if viewer %}
+          <span class="view-only-pill"><i class="ti ti-eye" aria-hidden="true"></i> View only</span>
+        {% elif account.profile %}
+          {#- On the start page the "Create new project" tile is the one way to start; elsewhere it's this button. -#}
+          {% if request.endpoint != "index" %}
+          <form method="post" action="{{ url_for('start_project') }}">
+            <button class="button small secondary" type="submit"><i class="ti ti-plus" aria-hidden="true"></i><span class="hide-small"> New project</span></button>
+          </form>
+          {% endif %}
+          <a class="header-link" href="{{ url_for('index') }}"><i class="ti ti-layout-grid" aria-hidden="true"></i><span class="hide-small"> Your projects</span></a>
+          <span class="header-profile" title="Signed in as {{ account.profile.name }}">
+            {% with name=account.profile.name, github=account.profile.github, size="small" %}{% include "_avatar.html" %}{% endwith %}
+            <span class="hide-small">{{ account.profile.name }}</span>
+          </span>
+          <form method="post" action="{{ url_for('signout') }}">
+            <button class="link-button header-link" type="submit">Sign out</button>
+          </form>
+        {% else %}
+          {% if account.has_profiles %}
+            <a class="header-link" href="{{ url_for('signin', next=request.path) }}">Sign in</a>
+          {% endif %}
+          {% if account.can_save %}
+            <a class="button small" href="{{ url_for('save_project', next=request.path) }}"><i class="ti ti-device-floppy" aria-hidden="true"></i> Save project</a>
+          {% endif %}
+        {% endif %}
+      </div>
     </div>
   </header>
 
-  <main class="container page">
+  <main class="container page{{ self.width() }}{{ layout_width }}">
     {% if step %}{% include "_steps.html" %}{% endif %}
-    {% block content %}{% endblock %}
+    {#- Setup steps 1–4: one calm card in the middle (the team step shows the live team beside it);
+        step 5 is the review board on its own. The step bar stays put; the page itself slides in. -#}
+    {#- "workspace" marks the part you work in: it slides out when you leave, the next one slides in. -#}
+    <div class="page-enter{% if step not in (1, 2, 3, 4) %} workspace{% endif %}">
+      {% if step in (1, 2, 3, 4) %}
+        <div class="float-layout">
+          <div class="float-side"></div>
+          <div class="float-main workspace">{{ self.content() }}</div>
+          <div class="float-side">{% if step == 2 %}{% include "_team_strip.html" %}{% endif %}</div>
+        </div>
+      {% elif step == 5 %}
+        {{ self.content() }}
+      {% else %}
+        {% block content %}{% endblock %}
+      {% endif %}
+    </div>
   </main>
+
+  <footer class="site-footer" id="page-end">
+    <div class="container footer-inner{{ self.width() }}{{ layout_width }}">
+      <p class="muted">Repo Referee · status comes from GitHub</p>
+      {% if not viewer %}
+      <details class="reset-demo">
+        <summary><i class="ti ti-refresh" aria-hidden="true"></i> Reset demo</summary>
+        <form method="post" action="{{ url_for('reset_demo') }}" class="reset-demo-box">
+          <p>Start fresh, as a first-time visitor? All profiles and projects move to <span class="mono">data/archive/</span>, so nothing is lost. Your issues stay in GitHub.</p>
+          <button class="button small" type="submit">Reset</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+  </footer>
   {% block scripts %}{% endblock %}
 </body>
 </html>

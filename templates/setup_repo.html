@@ -35,7 +35,7 @@
         <ul class="member-list check-list" aria-label="Who can be assigned">
           {% for member in members %}
             <li class="member">
-              <span class="avatar" aria-hidden="true">{{ member.name[:1]|upper }}</span>
+              {% with name=member.name, github=member.github, size="normal" %}{% include "_avatar.html" %}{% endwith %}
               <span class="member-name">{{ member.name }}</span>
               <span class="mono muted member-github">@{{ member.github }}</span>
               {% if member.assignable %}

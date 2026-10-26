@@ -1,8 +1,11 @@
 {% extends "base.html" %}
-{#- The dashboard shell. dashboard.js asks /api/status for the live numbers and fills it in. -#}
+{#- The dashboard shell. dashboard.js asks the status URL for the live numbers and fills it in.
+    With `viewer` it is the view-only board a teammate opens from the shared link: the same live
+    status, without anything that changes the project. -#}
 {% block title %}Dashboard · {{ project.project.name }} · Repo Referee{% endblock %}
+{% block width %} wide{% endblock %}
 {% block content %}
-<div class="dashboard" id="dashboard" data-poll-seconds="{{ poll_seconds }}">
+<div class="dashboard" id="dashboard" data-poll-seconds="{{ poll_seconds }}" data-status-url="{{ status_url or url_for('status') }}">
   <header class="dashboard-head">
     <div>
       <h1>{{ project.project.name }}</h1>
@@ -12,36 +15,55 @@
         Close an issue in GitHub and this page follows.
       </p>
     </div>
+    {% if not viewer %}
+      <details class="share-board">
+        <summary class="button secondary small"><i class="ti ti-share" aria-hidden="true"></i> Share board</summary>
+        <div class="share-board-box">
+          <p class="share-board-title">Share this board with your team</p>
+          <p class="muted">Anyone with the link can follow the board, but can't change any task. Every issue in GitHub links here too.</p>
+          <div class="share-board-row">
+            <input class="input mono" id="share-link" type="text" value="{{ share_link }}" readonly aria-label="View-only link to this board">
+            <button class="button small" type="button" id="share-copy"><i class="ti ti-copy" aria-hidden="true"></i> <span>Copy link</span></button>
+          </div>
+          <a class="share-board-open" href="{{ share_link }}" target="_blank" rel="noopener noreferrer"><i class="ti ti-eye" aria-hidden="true"></i> Open the view-only board</a>
+        </div>
+      </details>
+    {% endif %}
   </header>
 
   <section class="feedback" aria-label="Feedback">
     <ul class="feedback-list" id="feedback" aria-live="polite"></ul>
   </section>
 
-  <section class="card" aria-labelledby="progress-title">
+  <section class="board-section" aria-labelledby="board-title">
     <div class="section-head">
-      <h2 id="progress-title">Progress per criterion</h2>
+      <h2 id="board-title">Tasks per grading criterion</h2>
       <p class="overall mono-numbers" id="overall"></p>
     </div>
     <div class="overall-bar" id="overall-bar"></div>
-    <ul class="criterion-progress" id="criteria" aria-live="off">
-      <li class="loading-row muted">Checking GitHub…</li>
-    </ul>
+    <div class="board" id="board" aria-live="off">
+      <p class="loading-row muted">Checking GitHub…</p>
+    </div>
+    <p class="board-note muted">A card turns green when its issue is closed in GitHub. Nothing to drag: GitHub keeps the score.</p>
     <p class="dropped-note muted" id="dropped-note" hidden></p>
   </section>
 
   <section class="card" aria-labelledby="summary-title">
     <div class="section-head">
       <h2 id="summary-title">Weekly summary</h2>
+      {% if not viewer %}
       <button class="button secondary small" type="button" id="summary-button">
         <i class="ti ti-sparkles" aria-hidden="true"></i> <span>Write weekly summary</span>
       </button>
+      {% endif %}
     </div>
     <p class="summary-note message" id="summary-note" role="status" hidden></p>
     <div class="summary" id="summary" aria-live="polite">
       {% if project.summary %}
         <p class="summary-text">{{ project.summary.text }}</p>
-        <p class="summary-meta muted">{{ project.summary.period_label or (project.summary.period_start ~ " – " ~ project.summary.period_end) }} · Written by Claude from your closed issues</p>
+        <p class="summary-meta muted">{{ project.summary.period_label or (project.summary.period_start ~ " – " ~ project.summary.period_end) }} · Written by AI from your closed issues</p>
+      {% elif viewer %}
+        <p class="summary-empty muted">No summary yet. It shows up here once someone on the team writes one.</p>
       {% else %}
         <p class="summary-empty muted">One click writes a short summary of what the team closed in GitHub in the last 7 days.</p>
       {% endif %}
@@ -63,12 +85,17 @@
 
   <footer class="dashboard-foot">
     <p class="sync" id="sync"><span class="sync-dot" aria-hidden="true"></span><span class="mono" id="sync-text">connecting to GitHub…</span></p>
+    {% if not viewer %}
     <div class="start-over" id="start-over">
       <button class="link-button" type="button" id="start-over-open">Start a new project</button>
       <div class="message heads-up confirm" id="start-over-confirm" role="alertdialog" aria-labelledby="start-over-question" hidden>
         <i class="ti ti-info-circle" aria-hidden="true"></i>
         <div>
-          <p id="start-over-question"><strong>Start a new project?</strong> This clears the project from Repo Referee. Your issues stay in GitHub.</p>
+          {% if project.owner_profile %}
+            <p id="start-over-question"><strong>Start a new project?</strong> This one stays under "Your projects". Your issues stay in GitHub.</p>
+          {% else %}
+            <p id="start-over-question"><strong>Start a new project?</strong> This one isn't saved to a profile, so it's cleared from Repo Referee. Your issues stay in GitHub. <a href="{{ url_for('save_project', next=url_for('dashboard')) }}">Save it first</a> to keep it.</p>
+          {% endif %}
           <div class="confirm-actions">
             <button class="button" type="button" id="start-over-yes">Start new project</button>
             <button class="button secondary" type="button" id="start-over-no">Cancel</button>
@@ -77,6 +104,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </footer>
 </div>
 {% endblock %}

@@ -13,6 +13,10 @@
                 {% if error %}aria-describedby="assignment-message"{% endif %}>{{ text }}</textarea>
     </div>
 
+    {% if not text %}
+      <p class="sample-hint muted"><i class="ti ti-file-text" aria-hidden="true"></i> <span>No assignment at hand? <a href="{{ url_for('setup_assignment', sample=1) }}">Use the sample assignment</a></span></p>
+    {% endif %}
+
     {% if error == "failed" %}
       <p class="message error" id="assignment-message" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>{{ message }}</span></p>
     {% elif error %}
@@ -49,32 +53,109 @@
       </div>
     {% endif %}
 
-    <p class="loading-note muted" id="loading-note" hidden role="status">
-      <i class="ti ti-loader-2 spin" aria-hidden="true"></i> Reading your assignment… This usually takes under a minute.
-    </p>
+    <div class="loading-note" id="loading-note" hidden role="status">
+      <p class="loading-line"><i class="ti ti-loader-2 spin" aria-hidden="true"></i> <span>Reading your assignment…</span></p>
+      <div class="loading-track" aria-hidden="true"><div class="loading-bar" id="loading-bar"></div></div>
+      <p class="loading-left muted" id="loading-left" aria-hidden="true">About 20 seconds left</p>
+    </div>
   </form>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Loading state: the page waits for Claude, so show that something is happening
-  // and stop a second click from starting a second request.
+  // Loading state: the page waits for the AI, so show that something is happening, count down
+  // an estimate (the usual time, measured in the Claude spike: about 20 seconds) and stop a
+  // second click from starting a second request. The form is sent in the background, so when
+  // the tasks are ready early the bar can still run to full (fast) before the next step opens.
   (function () {
+    var ESTIMATE_SECONDS = 20;
+    var FINISH_MS = 700;
     var form = document.getElementById("assignment-form");
     var note = document.getElementById("loading-note");
+    var bar = document.getElementById("loading-bar");
+    var left = document.getElementById("loading-left");
+    var timer = null;
+    var percent = 4;
+    var secondsLeft = ESTIMATE_SECONDS;
+
+    function countDown() {
+      var started = Date.now();
+      timer = setInterval(function () {
+        var elapsed = (Date.now() - started) / 1000;
+        secondsLeft = Math.max(0, Math.ceil(ESTIMATE_SECONDS - elapsed));
+        percent = 4 + Math.min(elapsed / ESTIMATE_SECONDS, 1) * 90;
+        bar.style.width = Math.round(percent) + "%";
+        left.textContent = secondsLeft > 3 ? "About " + secondsLeft + " seconds left"
+          : secondsLeft > 0 ? "Almost there…"
+          : "Taking a bit longer than usual…";
+      }, 250);
+    }
+
+    // The tasks are ready: count the rest down fast and fill the bar, then go on.
+    function finish(then) {
+      clearInterval(timer);
+      var fromPercent = percent;
+      var fromSeconds = secondsLeft;
+      var start = performance.now();
+      bar.style.transition = "none";
+      function step(now) {
+        var progress = Math.min((now - start) / FINISH_MS, 1);
+        var seconds = Math.ceil(fromSeconds * (1 - progress));
+        bar.style.width = (fromPercent + (100 - fromPercent) * progress) + "%";
+        left.textContent = progress < 1 && seconds > 0
+          ? "About " + seconds + (seconds === 1 ? " second" : " seconds") + " left"
+          : "Done: your tasks are ready";
+        if (progress < 1) { requestAnimationFrame(step); } else { setTimeout(then, 300); }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Something else came back (a message on this page, like "try again"): show it as it is.
+    function showPage(html) {
+      clearInterval(timer);
+      document.open();
+      document.write(html);
+      document.close();
+    }
+
     form.addEventListener("submit", function (event) {
-      if (form.dataset.sending) { event.preventDefault(); return; }
+      event.preventDefault();
+      if (form.dataset.sending) { return; }
       form.dataset.sending = "yes";
       var clicked = event.submitter;
+      var data = new FormData(form);
+      if (clicked && clicked.name) { data.append(clicked.name, clicked.value); }
       form.querySelectorAll("[data-loading]").forEach(function (button) {
         button.setAttribute("aria-disabled", "true");
         if (button === clicked || !clicked) { button.textContent = "Reading your assignment…"; }
       });
       document.getElementById("assignment").readOnly = true;
-      // Leaving now wouldn't stop the request: hide the ways out until the answer is in.
-      document.querySelectorAll('a.button, .steps-dots a').forEach(function (link) { link.hidden = true; });
+      // Leaving now wouldn't stop the request: hide the "Keep current tasks" way out, and keep the
+      // step bar in view but not clickable until the answer is in.
+      document.querySelectorAll("a.button").forEach(function (link) { link.hidden = true; });
+      document.querySelectorAll(".stepbar a").forEach(function (link) {
+        link.setAttribute("aria-disabled", "true");
+        link.setAttribute("tabindex", "-1");
+        link.addEventListener("click", function (clickEvent) { clickEvent.preventDefault(); });
+      });
       note.hidden = false;
+      countDown();
+
+      fetch(form.action || window.location.href, { method: "POST", body: data })
+        .then(function (response) {
+          // Success sends you on to the next step; anything else is this page with a message.
+          if (response.redirected) {
+            finish(function () { window.location.assign(response.url); });
+            return;
+          }
+          return response.text().then(showPage);
+        })
+        .catch(function () {
+          clearInterval(timer);
+          note.querySelector(".loading-line span").textContent = "Couldn't reach Repo Referee. Is the app still running?";
+          left.textContent = "Your text is still here. Reload the page to try again.";
+        });
     });
   })();
 </script>

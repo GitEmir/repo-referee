@@ -1,16 +1,17 @@
 // Dashboard: ask the backend for the live status (on open, every POLL_SECONDS and when the
-// tab comes back into view) and redraw the bars and squares. Nothing here changes a task's
+// tab comes back into view) and redraw the board, the bars and the squares. Nothing here changes a task's
 // status: that only ever comes from GitHub.
 (function () {
   "use strict";
 
   var root = document.getElementById("dashboard");
   var POLL_MS = (Number(root.dataset.pollSeconds) || 10) * 1000;
+  var STATUS_URL = root.dataset.statusUrl || "/api/status"; // the view-only board has its own
   var els = {
     feedback: document.getElementById("feedback"),
     overall: document.getElementById("overall"),
     overallBar: document.getElementById("overall-bar"),
-    criteria: document.getElementById("criteria"),
+    board: document.getElementById("board"),
     droppedNote: document.getElementById("dropped-note"),
     people: document.getElementById("people"),
     sync: document.getElementById("sync"),
@@ -90,43 +91,92 @@
     track.classList.toggle("complete", value === 100);
   }
 
-  function renderCriteria(data) {
+  function renderOverall(data) {
     var totals = data.totals;
     els.overall.textContent = (totals.percent === null ? "No tasks" : "Overall · " + totals.percent + "%") +
       " · " + totals.tasks_closed + " / " + plural(totals.tasks_total, "task", "tasks") + " closed";
     if (!els.overallBar.firstChild) { els.overallBar.appendChild(bar(totals.percent)); }
     setBar(els.overallBar.firstChild, totals.percent);
     els.overallBar.firstChild.setAttribute("aria-label", "Overall progress");
-
-    var loading = els.criteria.querySelector(".loading-row");
-    if (loading) { loading.remove(); }
-    data.criteria.forEach(function (criterion) {
-      var row = keyed(els.criteria, criterion.id, function () {
-        var li = make("li", "criterion-row");
-        var head = make("div", "criterion-row-head");
-        head.appendChild(make("span", "criterion-name"));
-        head.appendChild(make("span", "criterion-value"));
-        li.appendChild(head);
-        li.appendChild(bar(criterion.percent));
-        els.criteria.appendChild(li);
-        return li;
-      });
-      var label = "Criterion " + criterion.number + " · " + criterion.title;
-      row.querySelector(".criterion-name").textContent = label;
-      var value = row.querySelector(".criterion-value");
-      if (criterion.percent === null) {
-        value.textContent = "No tasks";
-      } else {
-        value.textContent = criterion.percent + "%";
-        value.title = criterion.done_points + " of " + criterion.total_points + " points done";
-      }
-      setBar(row.querySelector(".bar"), criterion.percent);
-      row.querySelector(".bar").setAttribute("aria-label", label);
-      row.classList.toggle("no-tasks", criterion.percent === null);
-    });
-
     els.droppedNote.hidden = !data.dropped_note;
     els.droppedNote.textContent = data.dropped_note || "";
+  }
+
+  // --- The board: one column per criterion, one card per task -----------------------------
+
+  var COLUMN_COLORS = 6; // style.css has .col-color-0 … .col-color-5
+  var PERSON_COLORS = 5; // and .person-color-0 … .person-color-4
+  var STATE_TEXT = { done: "done", dropped: "not planned", missing: "issue not found", open: "open" };
+
+  // Cards are updated in place (keyed by task id), so a focused card keeps its focus while
+  // the page refreshes; a card that just turned done pops once.
+  function updateCard(card, task) {
+    card.className = "board-card-item " + task.state + " person-color-" + (task.person_index % PERSON_COLORS);
+    card.querySelector(".board-card-title").textContent = task.title;
+    var avatar = card.querySelector(".board-avatar");
+    avatar.textContent = (task.person || "?").trim().slice(0, 1).toUpperCase();
+    var label = (task.issue_number ? "#" + task.issue_number + " " : "") + task.title + " · " + task.person +
+      " · weight " + task.weight + " · " + (STATE_TEXT[task.state] || "open");
+    card.title = label;
+    card.setAttribute("aria-label", label);
+    if (task.url) {
+      card.href = task.url;
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
+    }
+    if (!firstRender && task.state === "done" && previousStates[task.id] && previousStates[task.id] !== "done") {
+      card.classList.add("pop");
+    }
+  }
+
+  function renderCards(container, tasks) {
+    var wanted = tasks.map(function (task) { return task.id; }).join(",");
+    if (container.dataset.tasks !== wanted) {
+      // The set of tasks changed (rare): rebuild the column's cards once.
+      container.textContent = "";
+      if (tasks.length === 0) { container.appendChild(make("p", "muted board-empty", "No tasks")); }
+      tasks.forEach(function (task) {
+        var card = make(task.url ? "a" : "div", "board-card-item");
+        card.dataset.taskId = task.id;
+        var check = make("i", "ti ti-circle-check board-card-check");
+        check.setAttribute("aria-hidden", "true");
+        card.appendChild(check);
+        card.appendChild(make("span", "board-card-title"));
+        card.appendChild(make("span", "board-avatar")).setAttribute("aria-hidden", "true");
+        container.appendChild(card);
+      });
+      container.dataset.tasks = wanted;
+    }
+    tasks.forEach(function (task) {
+      var card = container.querySelector('[data-task-id="' + task.id + '"]');
+      if (card) { updateCard(card, task); }
+    });
+  }
+
+  function renderBoard(data) {
+    var loading = els.board.querySelector(".loading-row");
+    if (loading) { loading.remove(); }
+    data.criteria.forEach(function (criterion, index) {
+      var column = keyed(els.board, criterion.id, function () {
+        var section = make("section", "board-column col-color-" + (index % COLUMN_COLORS));
+        var head = make("header", "board-column-head");
+        head.appendChild(make("h3", "board-column-title"));
+        head.appendChild(make("span", "board-column-count mono-numbers"));
+        section.appendChild(head);
+        section.appendChild(make("div", "board-cards"));
+        els.board.appendChild(section);
+        return section;
+      });
+      var label = criterion.number + " · " + criterion.title;
+      column.querySelector(".board-column-title").textContent = label;
+      column.setAttribute("aria-label", "Criterion " + label);
+      var count = column.querySelector(".board-column-count");
+      count.textContent = criterion.tasks_done + "/" + criterion.tasks_total;
+      count.title = criterion.percent === null ? "No tasks"
+        : criterion.percent + "% · " + criterion.done_points + " of " + criterion.total_points + " points done";
+      column.classList.toggle("complete", criterion.percent === 100);
+      renderCards(column.querySelector(".board-cards"), (data.board || {})[criterion.id] || []);
+    });
   }
 
   // --- Contribution per person -----------------------------------------------------------
@@ -229,7 +279,7 @@
   function refresh() {
     if (inFlight) { return; }
     inFlight = true;
-    fetch("/api/status", { headers: { Accept: "application/json" }, cache: "no-store" })
+    fetch(STATUS_URL, { headers: { Accept: "application/json" }, cache: "no-store" })
       .then(function (response) {
         return response.json().catch(function () { return {}; }).then(function (data) {
           if (response.status === 409 && data.redirect) {
@@ -239,7 +289,8 @@
           appUnreachable = false;
           if (!response.ok) { throw new Error(data.error || "Couldn't reach GitHub."); }
           renderFeedback(data.feedback);
-          renderCriteria(data);
+          renderOverall(data);
+          renderBoard(data);
           renderPeople(data);
           firstRender = false;
           lastSuccess = Date.now();
@@ -255,7 +306,7 @@
           problem = (error && error.message) || "Couldn't reach GitHub.";
         }
         if (!lastSuccess) {
-          [els.criteria, els.people].forEach(function (list) {
+          [els.board, els.people].forEach(function (list) {
             var loading = list.querySelector(".loading-row");
             if (loading) { loading.textContent = problem; }
           });
@@ -274,10 +325,31 @@
     if (document.visibilityState === "visible") { refresh(); }
   });
 
-  // --- Weekly summary --------------------------------------------------------------------
+  // --- Share board: copy the view-only link -----------------------------------------------
 
+  var copyButton = document.getElementById("share-copy");
+  if (copyButton) {
+    copyButton.addEventListener("click", function () {
+      var input = document.getElementById("share-link");
+      var label = copyButton.querySelector("span");
+      input.select();
+      var copied = navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject();
+      copied
+        .catch(function () { document.execCommand("copy"); })
+        .then(function () {
+          label.textContent = "Copied";
+          setTimeout(function () { label.textContent = "Copy link"; }, 2000);
+        });
+    });
+  }
+
+  // The view-only board has no buttons that change the project: stop here.
   var openButton = document.getElementById("start-over-open");
   var summaryButton = document.getElementById("summary-button");
+  if (!openButton || !summaryButton) { return; }
+
+  // --- Weekly summary --------------------------------------------------------------------
+
   var summaryBox = document.getElementById("summary");
   var summaryNote = document.getElementById("summary-note");
   var summaryBusy = false;
@@ -310,7 +382,7 @@
           } else if (data.summary) {
             showSummary([
               make("p", "summary-text", data.summary.text),
-              make("p", "summary-meta muted", data.summary.period_label + " · Written by Claude from your closed issues")
+              make("p", "summary-meta muted", data.summary.period_label + " · Written by AI from your closed issues")
             ]);
           } else {
             showSummaryNote("info", data.message);

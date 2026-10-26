@@ -167,6 +167,15 @@ def test_issue_body_follows_the_spec_format():
     assert body.rstrip().endswith("in a commit on main._")
 
 
+def test_issue_body_links_to_the_team_board_when_there_is_one():
+    task = {"title": "x", "done_when": "y", "weight": 2}
+    criterion = {"number": 1, "title": "A"}
+    member = {"name": "Sara", "github": "sara-dev"}
+    with_board = logic.issue_body(task, criterion, member, "main", board_url="http://localhost:5000/board/abc")
+    assert "**Team board:** [see everyone's progress](http://localhost:5000/board/abc) (view only)" in with_board
+    assert "Team board" not in logic.issue_body(task, criterion, member, "main")
+
+
 def test_issue_body_keeps_the_table_intact():
     task = {"title": "x", "done_when": "", "weight": 1}
     body = logic.issue_body(task, {"number": 1, "title": "A | B"}, {"name": "Sam\nLee", "github": "sam"}, "trunk")
@@ -253,6 +262,16 @@ def test_contribution_counts_done_weights_and_skips_dropped():
     assert [t["issue_number"] for t in sara["tasks"]] == [1, 3]  # #5 was dropped
     assert [t["state"] for t in ali["tasks"]] == ["open", "open"]
     assert ali["done_points"] == 0
+
+
+def test_board_cards_group_tasks_per_criterion_and_keep_dropped_ones():
+    criteria, tasks, team, issues = sample_board()
+    board = logic.board_cards(criteria, tasks, team, logic.statuses(tasks, issues))
+    assert list(board) == ["c1", "c2", "c3"]
+    assert [(c["title"], c["state"], c["person"]) for c in board["c2"]] == [
+        ("Train", "done", "Sara"), ("Tune", "open", "Ali"), ("Old idea", "dropped", "Sara")]
+    assert [c["person_index"] for c in board["c1"]] == [0, 1]
+    assert board["c3"] == []
 
 
 def test_missing_issue_counts_as_open():
