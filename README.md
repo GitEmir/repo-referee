@@ -5,6 +5,8 @@ Repo Referee helps a student team turn a project assignment and its grading crit
 It is a small local web app: a Flask backend in Python, plain HTML, CSS and JavaScript in the browser, the Claude API for task generation and the weekly summary, and the GitHub REST API for issues. Everything is saved on your laptop, in `data/`.
 
 > **Status:** proof of concept, built for the Build With AI: Basics hackathon. The planning documents it was built from are in [`devpost/`](devpost/).
+>
+> **Demo video (2:49):** https://youtu.be/vHjSWE-AR2s
 
 ## How it works
 

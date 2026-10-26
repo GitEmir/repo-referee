@@ -102,6 +102,10 @@ Without `uv` (for other people's machines): `python -m venv .venv`, `.venv\Scrip
 
 **Deployment:** none. The learner chose to run locally and record the video. This can be reconsidered in `6-ship`, but it is not part of the plan.
 
+**Shared links** (recorded in `6-ship`):
+- Demo video (public, 2:49, the learner's own voice-over with English subtitles): https://youtu.be/vHjSWE-AR2s
+- Public repository (MIT license): https://github.com/GitEmir/repo-referee
+
 ## Look and Feel
 
 Carries forward `prd.md > Look and Feel`: minimal and clean, light theme, one green accent, GitHub-inspired details, friendliness through words.
