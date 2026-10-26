@@ -35,7 +35,7 @@ Implements `prd.md > The Core Journey`.
                                       data/project.json
 ```
 
-1. **Open the app.** The browser asks for `/`. The backend reads `project.json`: no project yet → "Create project"; setup not finished → the step you were on; tasks already sent → the dashboard. (`prd.md > States and Boundaries`: first use, coming back.)
+1. **Open the app.** The browser asks for `/`, the start page. The backend reads `project.json`: no project yet → the start page asks for the project name; a project in progress → "Continue your project" leads to the step you were on, or to the dashboard once the tasks are sent. (`prd.md > States and Boundaries`: first use, coming back.)
 2. **Create a project.** The name form posts to `/setup/project`. The store saves the name. (`prd.md > Project Setup`)
 3. **Add team members.** Each add or remove posts a small form. The store saves the list right away. (`prd.md > Project Setup`)
 4. **Paste the assignment.** The form posts to `/setup/assignment`. The backend saves the text first, so nothing is lost, then calls `ai.generate_plan()`. Claude returns criteria and tasks; the backend checks them and saves them. Meanwhile the page shows a loading state. (`prd.md > Task Generation`)
@@ -45,7 +45,7 @@ Implements `prd.md > The Core Journey`.
 8. **Work happens in GitHub.** The team closes issues there, by hand or with a commit message such as "Closes #12" on the default branch.
 9. **Dashboard.** `dashboard.js` calls `GET /api/status` on open, every 10 seconds, and whenever the tab comes back into view. The backend makes one GitHub call, `logic.py` turns the result into progress, contribution and feedback, and the page redraws. (`prd.md > Dashboard: Automatic Status`)
 10. **Weekly summary.** The button posts to `/api/summary`. The backend collects the tasks closed in the last 7 days and asks Claude for a short summary, which is saved and shown. (`prd.md > Dashboard: Weekly Summary`)
-11. **Start over.** "Start a new project" at the bottom of the dashboard asks for confirmation and posts to `/api/reset`. The backend moves `project.json` into `data/archive/` and the browser returns to step 1. The issues stay in GitHub. (`prd.md > Starting Over`)
+11. **Start over.** "Start a new project" at the bottom of the dashboard asks for confirmation and posts to `/api/reset`. The backend moves `project.json` into `data/archive/` and the browser returns to the start page. The issues stay in GitHub. (`prd.md > Starting Over`)
 
 ## Stack
 
@@ -76,6 +76,7 @@ ANTHROPIC_API_KEY=        # from the Claude Console, with a few dollars of credi
 GITHUB_TOKEN=             # fine-grained token: only the test repo, Issues read and write
 CLAUDE_MODEL=claude-opus-5-5   # optional
 POLL_SECONDS=10                # optional
+PUBLIC_URL=                    # optional: the app's address once it runs online, used for the team board link
 ```
 
 **Start it** (PowerShell, in the project folder):
@@ -91,11 +92,11 @@ Then open `http://127.0.0.1:5000`. Run the tests with `uv run pytest`.
 
 Without `uv` (for other people's machines): `python -m venv .venv`, `.venv\Scripts\Activate.ps1`, `pip install -r requirements.txt`, `flask --app app run`.
 
-**Start over:** use "Start a new project" at the bottom of the dashboard. It moves the current `project.json` into `data/archive/`, so nothing is permanently deleted, and returns to step 1. The issues already created stay in GitHub. This is also how you reset between demo takes.
+**Start over:** use "Start a new project" at the bottom of the dashboard. It moves the current `project.json` into `data/archive/`, so nothing is permanently deleted, and returns to the start page. The issues already created stay in GitHub. This is also how you reset between demo takes.
 
 **Recording the demo** (required: a public video under 3 minutes, plus the public repository):
 - Test repo, for example `<your-account>/repo-referee-demo`, with four invited collaborators who have accepted the invitation. Together with the owner that makes the team of five.
-- The fictional demo assignment in `samples/assignment-churn.md`, written by the learner.
+- The fictional demo assignment in `samples/assignment-room-booking.md`: a small coding assignment (a room booking API) with four grading criteria. It replaced the learner's first sample, a data science churn assignment, because the learner wanted a simpler, code-only example; drafted by Claude at the learner's request.
 - Two windows side by side: the dashboard, and a GitHub issue. Close the issue, and the dashboard follows within 10 seconds. Switching back to the dashboard tab refreshes it immediately.
 - To show "closed by a commit", the commit message must contain "Closes #N" and the commit must land on the default branch (`main`). Closing keywords do nothing on other branches.
 
@@ -127,9 +128,11 @@ Carries forward `prd.md > Look and Feel`: minimal and clean, light theme, one gr
 
 **Shape and space:** cards with a 14px radius and 24px padding; buttons, inputs and inner blocks with a 10px radius; bars and pills fully rounded. A spacing scale of 4, 8, 12, 16, 24, 32 and 48 px. Content centered with a maximum width of 880 px. Plenty of white space; borders instead of shadows.
 
-**Motion:** progress bars animate their width over 400 ms when the status changes, and a square that just turned green "pops" in (300 ms). This is what makes the demo moment visible. Animations are switched off for people who set "reduce motion" in their system.
+**Backdrop:** behind every page sits a quiet dot grid (like a whiteboard) with soft, flat shapes in pastel colors: eight shapes in all (circles, a rounded square, a pill, a ring, a half circle). They stay in the empty space beside the page: never over the content, the header or the footer (the learner's rule), and on a screen too narrow for that they stay off screen. Every shape keeps to its own side, so it never passes behind the content. Each page shows four of them (two on each side), each on its own spot, and keeps the rest just off screen. So going to another step is a small surprise: some shapes glide to a new spot, some fly out of the screen and new ones fly in, each at its own pace with a small overshoot. On the first page of a visit they fly in. They drift slowly, and the drift keeps one clock across pages, so it carries on instead of restarting.
 
-**Layout per screen:** every page shows the logo mark, "Repo Referee" and the project name in the header (`prd.md > Project Setup`: "the name is shown in the app from then on"). Setup pages show a step indicator ("Step 3 of 5 · Paste assignment", five dots). The dashboard is one column, top to bottom, in the PRD order: feedback, progress per criterion, weekly summary, contribution per person (`prd.md > Screens and Layout`).
+**Motion:** progress bars animate their width over 400 ms when the status changes, and a square that just turned green "pops" in (300 ms). This is what makes the demo moment visible. When a button or link takes you to another step, the part you work in (the "workspace": the card on steps 1–4, the page content elsewhere) slides out while the next step's workspace slides in, from the side you're heading to (from the right going forward, from the left going back). This is a view transition; the header, step bar and backdrop switch without a fade, so the shapes keep gliding smoothly underneath. Browsers without view transitions get a plain slide-in of the new page. A button that keeps you on the same step (adding a teammate, a message after a mistake) just shows the result, with no transition. The first page of a visit fades up. Animations are switched off for people who set "reduce motion" in their system.
+
+**Layout per screen:** every page shows the logo mark, "Repo Referee" and the project name in the header (`prd.md > Project Setup`: "the name is shown in the app from then on"). Setup pages and the dashboard show a step bar with every step by name (done steps with a green check, the current step dark, the dashboard last; on a phone only the current step keeps its name). The dashboard runs top to bottom in the PRD order: feedback, the board (progress per criterion), weekly summary, contribution per person (`prd.md > Screens and Layout`). The board gives the app a calm, Trello-like feel: white columns with one color per criterion and light task cards.
 
 **Copy rules:** English; sentence case; short verbs on buttons ("Generate tasks", "Send to GitHub", "Write weekly summary"). Supportive coach tone: celebrate, suggest, never blame or name someone as behind. Use people's names, never gendered pronouns, because the app doesn't know anyone's pronouns. The only emoji is the celebration 🎉.
 
@@ -143,7 +146,7 @@ The entry point. It holds the routes and nothing else: each route reads or saves
 
 | Method | Path | What it does | PRD |
 |---|---|---|---|
-| GET | `/` | Redirects to the first step whose data is missing, or to the dashboard once the tasks are sent | `States and Boundaries` |
+| GET | `/` | The start page: what Repo Referee does and for whom, then the first question (name your project) or, with a project in progress, "Continue your project" to the current step or the dashboard. The name in the header leads here. The page is one calm, centered question, with three cards under it (paste the assignment, pick tasks fairly, watch the board follow GitHub) and the line that there is no extra app to keep up to date by hand. | `States and Boundaries` |
 | GET, POST | `/setup/project` | Step 1: name the project | `Project Setup` |
 | GET | `/setup/team` | Step 2: the team list | `Project Setup` |
 | POST | `/setup/team/add`, `/setup/team/remove/<member_id>` | Add or remove a member | `Project Setup` |
@@ -154,8 +157,18 @@ The entry point. It holds the routes and nothing else: each route reads or saves
 | POST | `/api/send` | Create the issues; body `{"send_anyway": true}` after the learner confirms | `Sending Tasks to GitHub` |
 | GET | `/dashboard` | The dashboard page | `Screens and Layout` |
 | GET | `/api/status` | Live status as JSON | `Dashboard: Automatic Status` |
+| GET | `/board/<token>` | The view-only board from the shared link: the live dashboard without anything that changes the project | `Sharing the Board (View Only)` |
+| GET | `/api/board/<token>/status` | Live status for the view-only board (the same JSON as `/api/status`) | `Sharing the Board (View Only)` |
 | POST | `/api/summary` | Write the weekly summary | `Dashboard: Weekly Summary` |
-| POST | `/api/reset` | Archive the project and start over | `Starting Over` |
+| POST | `/api/reset` | Start a new project: a saved project closes, one that isn't saved is archived | `Starting Over` |
+| GET, POST | `/account/save` | "Save your project": create a profile (name, GitHub username suggested from the token) or pick an existing one; the open project is saved to it | `States and Boundaries` |
+| GET | `/signin` | "Welcome back": choose your profile | `States and Boundaries` |
+| POST | `/signin/<profile_id>`, `/signout` | Sign in to a profile, or sign out | `States and Boundaries` |
+| POST | `/projects/new` | "New project" (signed in): close the open project, which stays under "Your projects", and go to the first question, just like the first time | `States and Boundaries` |
+| POST | `/projects/sample` | "Start from an example": a new project with the fictional sample assignment filled in, at the team step (never replaces a project that isn't saved) | `States and Boundaries` |
+| POST | `/reset-demo` | "Reset demo" in the footer of every page: move all profiles, projects and the state into `data/archive/reset-<date>-<time>/` and start as a first-time visitor (between demo takes); GitHub is not touched | `Starting Over` |
+| POST | `/projects/<key>/open` | Open one of your saved projects at its current step | `States and Boundaries` |
+| POST | `/projects/<key>/delete` | Delete one of your saved projects ("⋯" on its tile): the file moves into `data/archive/`, an open project is closed; GitHub is not touched | `States and Boundaries` |
 
 **Step rules:**
 - The current step is derived from what is saved, so there is no separate "stage" to keep in sync:
@@ -173,28 +186,35 @@ The entry point. It holds the routes and nothing else: each route reads or saves
 
 ### Project Store (`referee/store.py`)
 
-Reads and writes `data/project.json`, the app's only saved state (see `Data Model`).
+Reads and writes the files in `data/`, the app's only saved state (see `Data Model`). Most of the app works on "the open project".
 
-- `load()` returns the project, or `None` when there is no file yet.
-- `save(project)` writes to a temporary file first and then replaces the real file, so a crash never leaves a half-written file. It creates `data/` if needed.
-- `archive()` moves `project.json` to `data/archive/project-<date>-<time>.json` (used by "Start a new project").
+- `load()` returns the open project, or `None` when none is open (first use, or after "New project"). A `data/project.json` from before there were several projects is moved into `data/projects/` the first time.
+- `save(project)` writes the project to its own file and makes it the open project. Every write goes to a temporary file first and then replaces the real file, so a crash never leaves a half-written file. It creates `data/` if needed.
+- `archive()` moves the open project to `data/archive/project-<date>-<time>.json` (a project that isn't saved to a profile, on "Start a new project"); `close_project()` just closes a saved one.
+- Profiles: `create_profile()`, `sign_in()` (which saves the open project to the profile if it isn't saved yet), `sign_out()` (which closes a saved project), `projects_of(profile)` and `open_project(key, profile)` (only your own projects).
 - Every setup action saves immediately. A refresh or restart never loses work (`prd.md > States and Boundaries`: "nothing is lost").
 - IDs are short strings: `m1`, `m2` for members, `c1` for criteria, `t1` for tasks.
 
 ### Setup Step 1: Create Project
 
-A single name field and a "Start" button. An empty name shows "Give your project a name to start." Saves `project.name` and moves on to the team step. Implements `prd.md > Project Setup`.
+A single name field and a "Start" button, also shown on the start page. An empty name shows "Give your project a name to start." Saves `project.name` and moves on to the team step; when someone is signed in, the new project is saved to their profile right away. Implements `prd.md > Project Setup`.
+
+**Calm cards:** steps 1–4 are one plain, centered card with a soft shadow; no bubbles around it. Step 3 has a quiet "Use the sample assignment" link under the text box, which fills in `samples/assignment-room-booking.md` without calling the AI. Step 5 shows the board without extra labels above it: the learner found the three labels (the AI's first draft, the weight scale, the fair-share sum) and the fair-share sum line unnecessary; the weight scale stays in the tooltips of the weight buttons and each person's share next to their bar. The app never names the AI provider on screen: it says "AI" (the learner's choice).
 
 ### Setup Step 2: Team Members
 
-A list with a name field and a GitHub username field, plus "Add". Each row has a remove button. Validation: a name is required, and the GitHub username must look valid (letters, numbers and single hyphens, at most 39 characters; a pasted `@` is stripped). "Continue" appears once there is at least one member. The PRD expects about five. Implements `prd.md > Project Setup`.
+A list with a name field and a GitHub username field, plus "Add". Each row has a remove button. Validation: a name is required, and the GitHub username must look valid (letters, numbers and single hyphens, at most 39 characters; a pasted `@` is stripped). "Continue" appears once there is at least one member. There is no limit on the team size. Implements `prd.md > Project Setup`.
+
+**The live team:** to the right of the card, one face per person (their GitHub picture, with their first letter underneath), no limit and no count, with a plus at the end that jumps to the name field. Next to "GitHub username" a "?" opens a small popover that shows which part of `github.com/<username>` is the username, and that it is not an email or a full name. Under the form a quiet line says people can be added until the tasks are sent.
+
+**Add yourself:** when the GitHub token's owner (`github_client.token_owner()`, `GET /user`) isn't on the team yet, a green box offers "Add yourself" with their GitHub picture and username, and a name field. Avatars use `https://github.com/<username>.png`, with the first letter underneath when the picture can't load.
 
 ### Setup Step 3: Paste Assignment and Generate Tasks
 
 A large text area and a "Generate tasks" button. On submit:
 
 1. The text is saved first.
-2. The button changes to "Reading your assignment…" with a calm note, "This usually takes under a minute." (A little JavaScript, because the page waits for the backend.)
+2. The button changes to "Reading your assignment…" and a bar with a countdown appears: "About 20 seconds left", then "Almost there…", then "Taking a bit longer than usual…". The 20 seconds is an estimate from the measured Claude spike (about 21 s); while waiting the bar never reaches 100%, so it never claims to be done. The form is sent in the background (`fetch`), so the page knows when the answer is in: when the tasks are ready (the backend redirects to the next step), the countdown runs down fast and the bar fills to 100% in about 0.7 s ("Done: your tasks are ready") before the next step opens, also when the AI was quicker than the estimate (the learner wanted the bar always to finish). Any other answer (a message on this page, such as "try again" or "this replaces the current tasks") is shown right away. (A little JavaScript, because the page waits for the backend.)
 3. The backend calls `ai.generate_plan(text)` (see `AI Module`) and checks the result:
    - every task has a weight from 1 to 5 and a criterion that exists;
    - every criterion has at least one task. If not, it retries once automatically, telling Claude which criteria are uncovered. If that still fails, it saves the result and the review page notes "Criterion 3 doesn't have a task yet."
@@ -220,7 +240,9 @@ Implements `prd.md > The Core Journey` step 4 and `prd.md > States and Boundarie
 
 Implements `prd.md > Reviewing and Editing Tasks` and `prd.md > Choosing Tasks Fairly`.
 
-- **Top: fair-share bars.** One bar per member, "Sara · 7 / 10", using the math in `Calculations > Fair Share and Over-Share`. They update live as people choose tasks.
+- **How choosing works** (added in the final review, so nobody is thrown in without an explanation; picked from six ideas): a strip above the board with three steps. Check the tasks (change titles and weights, move or add tasks). Pick your tasks (the numbers 1 to 5 are the weight: 1 ≈ an hour, 3 ≈ a day, 5 ≈ several days; the fair share is all points ÷ the team size, so "2 / 6" means 2 of a fair 6 points). Send to GitHub (each task becomes an assigned issue). It is open on a first visit; × closes it and the browser remembers that (`localStorage`), leaving a small "How this works" link that opens it again.
+- **Layout: a board.** Changed in the final review so the generated tasks are easier to take in: one column per grading criterion (its color, number, description and "4 tasks · 11 points"), with compact task cards. A card shows the title, the weight as five small buttons and who does it: the person's colored initial and name, or an empty dashed face with "Who?". Clicking that face opens a row of the team's faces on the card, each with their name and points so far against the fair share (in the heads-up color once someone is at their share), plus "No one"; one click picks a person and closes the row (Escape or a click elsewhere closes it too). This replaced a plain dropdown the learner found unattractive (picked from ten page designs). The columns are light grey with white cards, like a board. "Done when", the criterion and delete sit under "Details". The board scrolls sideways when the columns don't fit. The page is the wide layout, with the fair share next to the title.
+- **Top: fair-share bars.** One bar per member, "Sara · 7 / 10", with their GitHub picture, using the math in `Calculations > Fair Share and Over-Share`. They update live as people choose tasks.
 - **Over-share heads-up** under the bar, in the heads-up color: "Ali is now at 14 / 10. Someone else has room for this task." It never blocks.
 - **Tasks grouped by criterion.** Each task card has editable fields:
   - title (text);
@@ -313,7 +335,7 @@ plan = response.parsed_output
 The instructions (`PLAN_INSTRUCTIONS`) tell Claude to:
 - take the grading criteria from the text, keeping their names and order;
 - create small, concrete tasks only for this one assignment, with nothing from outside it (`prd.md > Task Generation`);
-- aim for about 10–25 tasks, using the weight scale above;
+- make only the tasks the assignment really needs, each a logical piece of work one teammate can pick up: usually 6–15, fewer for a small assignment, never tiny steps (the learner wanted fewer, logical tasks); use the weight scale above;
 - link each task to exactly one criterion, and give every criterion at least one task;
 - write in the language of the assignment;
 - set `usable` to false when the text has no recognizable assignment or criteria.
@@ -413,6 +435,8 @@ Implements `prd.md > Screens and Layout` item 6 and the four dashboard headings 
   "totals": {"done_points": 18, "total_points": 29, "percent": 62, "tasks_closed": 9, "tasks_total": 16, "tasks_dropped": 1},
   "feedback": [{"kind": "celebration", "text": "Criterion 2 · Data quality is complete! 🎉"}],
   "criteria": [{"id": "c2", "number": 2, "title": "Data quality", "done_points": 6, "total_points": 6, "percent": 100}],
+  "board": {"c2": [{"id": "t3", "issue_number": 12, "title": "Clean missing values", "weight": 3, "state": "done",
+                    "url": "https://github.com/...", "person": "Sara", "person_index": 0}]},
   "people": [{"id": "m1", "name": "Sara", "github": "sara-dev", "done_points": 7,
               "tasks": [{"issue_number": 12, "title": "Clean missing values", "weight": 3, "state": "done", "url": "https://github.com/..."}]}],
   "summary": {"text": "…", "period_start": "2026-10-13", "period_end": "2026-10-20"}
@@ -421,7 +445,7 @@ Implements `prd.md > Screens and Layout` item 6 and the four dashboard headings 
 
 **Sections, top to bottom:**
 1. Feedback messages.
-2. Progress per criterion, with the overall line.
+2. The board, with the overall line above it: one column per grading criterion, each with a colored top line and a "done/total" count, and one card per task with the person's initial and a green check once its issue is closed. Dropped tasks stay on the board, muted and struck through. Cards link to their issue and are never dragged. The board scrolls sideways on a narrow screen.
 3. Weekly summary: the "Write weekly summary" button, then the latest summary with its period and the note "Written by Claude from your closed issues".
 4. Contribution per person: each row shows `@github`, the name, the squares, and the points.
 
@@ -431,13 +455,15 @@ Implements `prd.md > Screens and Layout` item 6 and the four dashboard headings 
 
 **Bottom of the page:** a quiet "Start a new project" link (see `Starting Over`).
 
+**Share board** (`prd.md > Sharing the Board (View Only)`): a button at the top right opens a panel with the view-only link, "Copy link" and "Open the view-only board". The panel talks as the finished product would (the learner's choice); the README explains that the link works where Repo Referee runs, which in the prototype is this laptop. The link is `<address>/board/<share_token>`: `PUBLIC_URL` when the app runs online, otherwise the address the app answers on now. The token (`secrets.token_urlsafe(16)`) is made the first time the dashboard opens or the tasks are sent, and every issue body gets a line "**Team board:** [see everyone's progress](…) (view only)". The view-only page is the same dashboard with `viewer`: "View only" in the header instead of the account buttons, no summary button, no start over, no Reset demo, and its own status URL. Opening it doesn't open the project or change anything; a wrong token gives a 404.
+
 **Before anything is closed** (`prd.md > States and Boundaries`): 0% bars, all squares gray, and the "Nothing closed yet" message. The squares already show everyone's chosen work, so the page never looks empty.
 
 ### Starting Over
 
 `POST /api/reset`, implementing `prd.md > Starting Over`.
-- **Confirmation** (inline, not a browser pop-up): "Start a new project? This clears the project from Repo Referee. Your issues stay in GitHub." with the buttons "Start new project" and "Cancel".
-- **On confirm:** `store.archive()` moves `project.json` to `data/archive/`, and the browser goes to step 1.
+- **Confirmation** (inline, not a browser pop-up), with the buttons "Start new project" and "Cancel". For a project saved to a profile: "This one stays under "Your projects"." For one that isn't: "This one isn't saved to a profile, so it's cleared from Repo Referee", with a link to save it first. Both add "Your issues stay in GitHub."
+- **On confirm:** a saved project closes and stays under "Your projects"; an unsaved one is moved to `data/archive/`. The browser goes to the start page.
 - Nothing in GitHub is touched, and nothing is permanently deleted: an archived file can be moved back by hand if needed.
 
 ### Styling (`static/css/style.css`)
@@ -446,12 +472,13 @@ One stylesheet. It starts with the tokens from `Look and Feel` as CSS custom pro
 
 ## Data Model
 
-Everything lives in `data/project.json`. Task status is **not** stored: it is read from GitHub on every refresh, because GitHub is the only source of truth for done or open.
+Each project lives in `data/projects/<key>.json`. Next to it, `data/profiles.json` holds the profiles (`{"id": "p3f9a1c", "name": "Emir", "github": "GitEmir", "created_at": …}`; the password field on "Save project" has no `name`, so the browser never sends it and nothing about it is stored) and `data/state.json` says which project is open and who is signed in (`{"active": "3f9a1c07", "profile_id": "p3f9a1c"}`). Task status is **not** stored: it is read from GitHub on every refresh, because GitHub is the only source of truth for done or open.
 
 ```json
 {
   "version": 1,
   "project": {"name": "Churn Prediction – Assignment 2", "created_at": "2026-10-20T09:12:00Z", "key": "3f9a1c07"},
+  "owner_profile": "p3f9a1c",
   "team": [
     {"id": "m1", "name": "Sara", "github": "sara-dev"},
     {"id": "m2", "name": "Ali", "github": "ali-dev"}
@@ -468,11 +495,12 @@ Everything lives in `data/project.json`. Task status is **not** stored: it is re
   ],
   "sent_at": null,
   "summary": null,
+  "share_token": null,
   "next_ids": {"m": 3, "t": 2}
 }
 ```
 
-A missing file means "first use". `next_ids` holds the next number for each kind of ID, so an ID is never reused after a removal (a page left open in another tab can't act on the wrong person or task). A file that can't be read as a project is moved to `data/archive/` and treated as first use. Which setup step to show is derived from which fields are filled in (see `Components > Flask App and Routes`). A criterion's `number` is its position in the assignment (1, 2, 3…). It is added by the backend and used in labels like "Criterion 2 · Data quality".
+No open project means "first use" or "start another one". `owner_profile` is `null` until the project is saved to a profile. `next_ids` holds the next number for each kind of ID, so an ID is never reused after a removal (a page left open in another tab can't act on the wrong person or task). A file that can't be read as a project is moved to `data/archive/` and treated as first use. Which setup step to show is derived from which fields are filled in (see `Components > Flask App and Routes`). `share_token` is the secret part of the view-only board link; it is `null` until the dashboard first opens or the tasks are sent. A criterion's `number` is its position in the assignment (1, 2, 3…). It is added by the backend and used in labels like "Criterion 2 · Data quality".
 
 | Data | Comes from | Updated when | After leaving and coming back |
 |---|---|---|---|
@@ -493,7 +521,7 @@ build-with-ai-basics/
 ├── app.py                     # Flask entry point: page routes + small JSON API; no business logic
 ├── referee/
 │   ├── __init__.py
-│   ├── store.py               # Load/save data/project.json (safe writes)
+│   ├── store.py               # Projects, profiles and the open project in data/ (safe writes)
 │   ├── ai.py                  # Only code that talks to Claude: generate_plan(), write_summary()
 │   ├── github_client.py       # Only code that talks to GitHub: repo check, assignee check, label, create/list issues
 │   └── logic.py               # Pure math: fair share, status mapping, progress, contribution, feedback, weekly window
@@ -501,7 +529,11 @@ build-with-ai-basics/
 │   ├── spike_claude.py        # Early spike: one real generate_plan() call on the sample assignment
 │   └── spike_github.py        # Early spike: repo check, assignee check, label, one test issue, list
 ├── templates/
-│   ├── base.html              # Shared layout: header with project name, fonts, icons, step indicator
+│   ├── base.html              # Shared layout: header with project name and profile, fonts, icons, step bar, one calm card
+│   ├── home.html              # Start page: what the app does, first question, or Welcome back + Your projects
+│   ├── account_save.html      # "Save your project": create or pick a profile
+│   ├── signin.html            # "Welcome back": choose your profile
+│   ├── _steps.html, _aside.html, _avatar.html, _logo.html, _task_card.html  # Shared pieces
 │   ├── setup_project.html     # Step 1: name the project
 │   ├── setup_team.html        # Step 2: team members
 │   ├── setup_assignment.html  # Step 3: paste assignment, loading state
@@ -514,10 +546,11 @@ build-with-ai-basics/
 │       ├── review.js          # Live fair-share bars, autosave, send
 │       └── dashboard.js       # Polling, rendering, weekly summary button
 ├── tests/
-│   └── test_logic.py          # pytest for referee/logic.py
+│   ├── test_logic.py          # pytest for referee/logic.py
+│   └── test_store.py          # pytest for referee/store.py: several projects, profiles, the old project.json
 ├── samples/
-│   └── assignment-churn.md    # Fictional demo assignment with grading criteria (written by the learner)
-├── data/                      # Created at runtime; gitignored (project.json, archive/)
+│   └── assignment-room-booking.md  # Fictional coding assignment with grading criteria (the sample)
+├── data/                      # Created at runtime; gitignored (projects/, profiles.json, state.json, archive/)
 ├── devpost/                   # scope.md, prd.md, spec.md; later checklist.md and app-map.html
 ├── .env.example               # Names of the required environment variables, no values
 ├── .gitignore                 # .env, data/, .venv/, __pycache__/, .pytest_cache/, learner profile
@@ -568,7 +601,7 @@ These load from their CDNs in `base.html`. There are no keys and no cost, and bo
 - **One JSON file** instead of a database. There is one team and one project. The fuller version would use a database with many projects and teams.
 - **Local only, no deployment, no login.** The keys stay on the laptop and nothing has to be hosted or secured. The fuller version would have hosting, accounts, and per-team access.
 - **A fine-grained personal token** instead of a GitHub App or "sign in with GitHub". One person sets it up once. The fuller version would be a GitHub App that teams install on their repo.
-- **At most 100 tasks per project** (one page of GitHub results), with no pagination. Real assignments produce about 10–25 tasks.
+- **At most 100 tasks per project** (one page of GitHub results), with no pagination. Real assignments produce about 6–15 tasks.
 - **Weekly summary on demand** (a button) instead of a scheduled weekly message.
 - **Equal fair share by points**, without skills or availability, as `scope.md > Later` says.
 - **Light theme only.**

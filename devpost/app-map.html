@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repo Referee · App map</title>
+<style>
+  :root {
+    --bg: #F6F8FA; --card: #FFFFFF; --border: #E7EAF0; --text: #1F2328; --muted: #656D76;
+    --green: #1F883D; --purple: #534AB7; --teal: #0F6E56; --coral: #993C1D;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0D1117; --card: #161B22; --border: #30363D; --text: #E6EDF3; --muted: #9BA5AE;
+            --green: #3FB950; --purple: #A9A3EE; --teal: #5DCAA5; --coral: #F0997B; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 32px 0 8px; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin: 12px 0; }
+  code { font: 13px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1px 5px; }
+  ol.route { padding-left: 0; list-style: none; counter-reset: stop; }
+  ol.route li { counter-increment: stop; position: relative; padding: 12px 16px 12px 52px; margin: 10px 0; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  ol.route li::before { content: counter(stop); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  ul.pointers { padding-left: 18px; }
+  ul.pointers li { margin: 6px 0; }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--text); }
+  svg .small { font-size: 11px; fill: var(--muted); }
+  svg rect.box { fill: var(--card); stroke: var(--border); stroke-width: 1.5; }
+  svg path.arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+  a { color: var(--green); }
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Repo Referee · App map</h1>
+  <p class="muted">A short guide to where things live in this project, so you can find your way back later.</p>
+
+  <section class="card" aria-labelledby="what">
+    <h2 id="what" style="margin-top:0">What the app does</h2>
+    <p>A student team pastes a group assignment. The AI turns its grading criteria into weighted tasks, the team picks who does what with a fair share per person, and one click creates the tasks as assigned GitHub issues. After that, a dashboard reads GitHub by itself: close an issue and its card turns green. Nobody updates a status by hand.</p>
+    <p><strong>The main pieces:</strong> <code>app.py</code> (the Flask routes and pages), <code>referee/ai.py</code> (asks Claude for the tasks), <code>referee/github_client.py</code> (talks to GitHub), <code>referee/logic.py</code> (fair share, what counts as done, the issue text), <code>referee/store.py</code> (projects and profiles as JSON files in <code>data/</code>), and <code>templates/</code> + <code>static/</code> for what you see.</p>
+  </section>
+
+  <h2 id="action">One action, end to end: closing an issue turns its card green</h2>
+  <figure class="card" aria-labelledby="diagram-caption" style="margin:12px 0">
+    <svg viewBox="0 0 820 190" role="img" aria-labelledby="svg-title svg-desc">
+      <title id="svg-title">From a closed issue to a green card</title>
+      <desc id="svg-desc">The dashboard in the browser asks app.py for the status; app.py asks GitHub for the issues; logic.py decides which tasks are done; the dashboard draws the green card.</desc>
+      <defs>
+        <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor" style="color: var(--muted)"/>
+        </marker>
+      </defs>
+      <rect class="box" x="10" y="30" width="170" height="70" rx="10"/>
+      <text x="25" y="58">Browser dashboard</text>
+      <text class="small" x="25" y="80">dashboard.js · refresh()</text>
+      <rect class="box" x="225" y="30" width="170" height="70" rx="10"/>
+      <text x="240" y="58">Flask app</text>
+      <text class="small" x="240" y="80">app.py · status_payload()</text>
+      <rect class="box" x="440" y="30" width="170" height="70" rx="10"/>
+      <text x="455" y="58">GitHub</text>
+      <text class="small" x="455" y="80">list_referee_issues()</text>
+      <rect class="box" x="225" y="120" width="170" height="60" rx="10"/>
+      <text x="240" y="145">Rules</text>
+      <text class="small" x="240" y="165">logic.py · task_status()</text>
+      <rect class="box" x="640" y="30" width="170" height="70" rx="10"/>
+      <text x="655" y="58">Green card</text>
+      <text class="small" x="655" y="80">dashboard.js · renderBoard()</text>
+      <path class="arrow" d="M180 65 L222 65"/>
+      <path class="arrow" d="M395 65 L437 65"/>
+      <path class="arrow" d="M310 100 L310 117"/>
+      <path class="arrow" d="M395 150 C 560 150, 700 140, 722 103"/>
+      <text class="small" x="188" y="55">every 10 s</text>
+      <text class="small" x="398" y="55">one call</text>
+    </svg>
+    <figcaption id="diagram-caption" class="muted">GitHub is the only source of truth for done or open: the app reads it and never stores a status.</figcaption>
+  </figure>
+
+  <h2 id="route">The route through the code</h2>
+  <p class="muted">A reference route: it was offered as a short tour; the learner had already tried the app end to end and chose a short recap instead.</p>
+  <ol class="route">
+    <li><strong>The dashboard asks for the status.</strong> <code>static/js/dashboard.js</code>, search for <code>function refresh(</code>. It calls the status URL when the page opens, every <code>POLL_SECONDS</code> (10) and when you come back to the tab. It never changes a status itself.</li>
+    <li><strong>The server asks GitHub.</strong> <code>app.py</code>, search for <code>def status_payload</code>. One call to GitHub through <code>list_referee_issues()</code> in <code>referee/github_client.py</code>, combined with the tasks the app saved.</li>
+    <li><strong>The rule for "done".</strong> <code>referee/logic.py</code>, search for <code>def task_status</code>. Closed as completed counts as done; closed as "not planned" or "duplicate" drops out of the totals (<code>DROPPED_REASONS</code>). Back in the browser, <code>renderBoard()</code> in <code>dashboard.js</code> draws the card green.</li>
+  </ol>
+
+  <h2 id="change">To change this, start here</h2>
+  <ul class="pointers">
+    <li><strong>How the AI makes tasks</strong> (how many, how they're worded): <code>referee/ai.py</code>, <code>PLAN_INSTRUCTIONS</code>.</li>
+    <li><strong>The fair share</strong>: <code>referee/logic.py</code>, <code>fair_share()</code> and <code>share_rows()</code>; the live version while choosing is <code>updateFairShare()</code> in <code>static/js/review.js</code>.</li>
+    <li><strong>What counts as done</strong>: <code>referee/logic.py</code>, <code>task_status()</code> and <code>DROPPED_REASONS</code>.</li>
+    <li><strong>The text of each GitHub issue</strong> (including the team board link): <code>referee/logic.py</code>, <code>issue_body()</code>.</li>
+    <li><strong>The view-only board link</strong>: <code>app.py</code>, <code>board_link()</code>; set <code>PUBLIC_URL</code> in <code>.env</code> once the app runs online.</li>
+    <li><strong>How often the dashboard checks GitHub</strong>: <code>POLL_SECONDS</code> in <code>.env</code>, read by <code>poll_seconds()</code> in <code>app.py</code>.</li>
+    <li><strong>Colors, fonts and spacing</strong>: the tokens at the top of <code>static/css/style.css</code> (<code>:root</code>).</li>
+    <li><strong>A sentence on a page</strong>: the page's file in <code>templates/</code>, for example the dashboard note in <code>templates/dashboard.html</code> ("A card turns green…"). Restart the app after changing a template.</li>
+    <li><strong>The example assignment</strong>: <code>samples/assignment-room-booking.md</code>.</li>
+  </ul>
+
+  <h2 id="practice">A practice to reuse</h2>
+  <div class="card">
+    <p><strong>Keep one source of truth, and let everything else read it.</strong> The planning (<code>devpost/prd.md</code>, "Dashboard: Automatic Status") decided that only GitHub says whether a task is done. The code follows that: <code>status_payload()</code> reads GitHub on every refresh and nothing stores a status, so the board can't drift out of date. Tests in <code>tests/test_logic.py</code> pin the rule down, for example <code>test_task_status_mapping</code> and <code>test_reopened_issue_is_open_again</code>.</p>
+    <p class="muted" style="margin:0">On another project: decide early where each piece of data truly lives, write it down in the plan, and make every screen read from there instead of keeping its own copy.</p>
+  </div>
+
+  <h2 id="run">Run it again</h2>
+  <div class="card">
+    <p>In the project folder (PowerShell), with your keys in <code>.env</code>:</p>
+    <p><code>uv run flask --app app run</code> &nbsp;then open <code>http://127.0.0.1:5000</code></p>
+    <p>Tests: <code>uv run pytest</code>. More in <code>README.md</code>.</p>
+  </div>
+
+  <details>
+    <summary>About this map</summary>
+    <p>A snapshot of the code on 26 October 2026, made after the final review and added in the same commit as this file. Code changes after that can make it drift; the search anchors (<code>def …</code>, <code>function …</code>) stay useful longer than line numbers.</p>
+  </details>
+</main>
+</body>
+</html>

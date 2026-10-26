@@ -19,7 +19,7 @@ The team sits together behind one screen for the setup. One person operates the 
 
 **Setup (once per assignment):**
 1. **Create a project.** Open the app and create a new project by giving it a name (for example "Churn Prediction – Assignment 2").
-2. **Add team members.** Enter each team member's name and GitHub username (about five people).
+2. **Add team members.** Enter each team member's name and GitHub username (any number of people).
 3. **Paste the assignment.** Paste the assignment text and its grading criteria. The AI turns it into small tasks, each linked to a grading criterion.
 4. **Connect the GitHub repo.** Enter the team's GitHub repo.
 5. **Review, edit and choose tasks.** See all proposed tasks. Edit anything. Team members choose their own tasks; every task must have a person. The app shows each person's fair share and gives a friendly heads-up when someone goes over it.
@@ -138,6 +138,15 @@ Source: `scope.md > The POC Boundary`.
   - [ ] Each team member's contribution is shown as the weight of their closed tasks.
   - [ ] Closing a task in GitHub visibly changes the chart.
 
+### Sharing the Board (View Only)
+Source: added in the final review (learner decision), so the whole team can follow progress.
+
+- As a teammate, I want to open the team board from a link, so that I can follow everyone's progress without being able to change the tasks.
+  - [ ] "Share board" on the dashboard shows a view-only link with "Copy link".
+  - [ ] The link opens the live board marked "View only", without anything that changes the project (no summary button, no start over, no account buttons).
+  - [ ] Every issue sent to GitHub links to the board.
+  - [ ] In the prototype the link works where Repo Referee runs (this laptop); the app is designed so it works for the whole team once Repo Referee is online.
+
 ### Starting Over
 Source: added in `4-spec` (learner decision), to start a new assignment or practice the demo again.
 
@@ -147,15 +156,15 @@ Source: added in `4-spec` (learner decision), to start a new assignment or pract
 
 ## States and Boundaries
 
-- **First use** — the app shows the "Create project" step.
-- **Coming back** — *(assumption)* the project, team and tasks are kept; reopening the app goes straight to the dashboard.
+- **First use** — the start page says what Repo Referee does and for whom, then asks the first question: the project name. No sign-in comes first.
+- **Coming back** — the project, team and tasks are kept on the laptop; the start page offers "Continue your project". With a profile, it says "Welcome back" and lists "Your projects".
 - **Dashboard before anything is closed** — progress is 0% and contributions are empty, shown with a friendly message rather than an empty chart.
 - **Empty or unusable assignment text** — *(assumption)* the app explains that it needs the assignment and its grading criteria and lets the user try again; no tasks are generated.
 - **AI can't generate tasks** — *(assumption)* a friendly error message and a "try again" button; nothing is lost.
 - **Repo can't be reached** — *(assumption)* a clear message that the repo was not found or access is missing; tasks are not sent until it works.
 - **Tasks nobody chose** — "Send to GitHub" is not available yet; the review screen shows which tasks still need a person.
 - **Teammate hasn't accepted the repo invitation** — the app names who can't be assigned yet and offers to send anyway (see `Sending Tasks to GitHub`).
-- **One team, one screen** — the team chooses tasks together on one screen. There are no personal accounts or logins.
+- **One team, one screen** — the team chooses tasks together on one screen. A profile (a name and a GitHub username; the password field only shows what a real account would ask, nothing is saved or checked) only saves projects on this laptop; it is not a personal login per teammate.
 
 ## Product Decisions
 
@@ -165,7 +174,8 @@ Source: added in `4-spec` (learner decision), to start a new assignment or pract
 - **Team members choose their own tasks, guided towards a fair share** — people pick what suits them without the work becoming unevenly divided.
 - **Going over your fair share gives a heads-up, not a block** — the team keeps control.
 - **All tasks are divided from the start** — the team is expected to share out every task during setup, so "Send to GitHub" only works once every task has a person.
-- **One screen, no accounts** — the team chooses together; personal logins would make the project much bigger.
+- **One screen, profiles only to save** — the team chooses together. Changed in the final review: the app now shows how a real product would let you find your projects again. You save a project by creating a profile (never as the first step), and a profile keeps several projects. Everything stays on this laptop; the screens don't say so (the learner's choice for the video), the README does; real online accounts stay deferred.
+- **Calm setup cards, a live team and "Add yourself"** — added in the final review. The setup pages are plain cards without decoration; the team step shows the team growing as a row of GitHub pictures (no limit, no count), a help popover for the username and a note that people can be added until sending. "Add yourself" uses the GitHub account the token belongs to.
 - **One board = one assignment** — the board treats that assignment as the whole goal and mixes in nothing else. This refines `scope.md`, which still described tasks per data science lifecycle phase: in the learner's projects, each phase is its own assignment of about three weeks.
 - **Dashboard order: feedback → progress per criterion → weekly summary → contribution per person** — what matters now comes first.
 - **Friendly feedback, not confronting warnings** — it should feel like good feedback from a coach, never negative or blaming.
@@ -175,6 +185,7 @@ Source: added in `4-spec` (learner decision), to start a new assignment or pract
 - **A "Start a new project" option** — for a new assignment or for practicing the demo; the GitHub issues stay (decided in `4-spec`).
 - **Two kinds of feedback: team balance tip and celebration** — the learner found these the most fun; the balance tip focuses on helping each other instead of on who is behind.
 - **Look: minimal and light, one green accent, GitHub-inspired details** — the learner preferred a minimalist style over the soft, playful directions; friendliness comes from the copy and the celebrations (decided in `4-spec`).
+- **Designed for online, the prototype runs locally** — the learner wants teammates to see the board, like an invitation in a board app. "Share board" gives a view-only link, and every issue links to it. Hosting the app online today would expose the API key and GitHub token to anyone with the address, so the prototype keeps running on this laptop and the link uses the app's online address once it has one (decided in the final review).
 - **Name: Repo Referee** — kept from scope; the learner likes it.
 
 ## What We're Building
@@ -185,11 +196,13 @@ Source: added in `4-spec` (learner decision), to start a new assignment or pract
 - One click to create all tasks as assigned GitHub issues, with a "send anyway" option when someone hasn't accepted the repo invitation yet.
 - A dashboard that reads status from GitHub by itself, with friendly feedback (team balance tip and celebration), progress per criterion, a weekly summary button, and contribution per person.
 - A "Start a new project" option to begin again.
+- A start page, a profile to save projects ("Save project", "Welcome back", "Your projects", "New project"), a live team strip, and "Add yourself" (added in the final review).
+- "Share board": a view-only board for teammates, linked from every issue (added in the final review).
 
 ## Deferred From the POC
 
-- **Personal accounts and logins** — the team works on one screen; accounts would make the project much bigger.
-- **Multiple projects or repos** — the proof of concept handles one team and one repo (`scope.md > Later`).
+- **Online accounts, logins and hosting** — profiles stay on this laptop, and the password field on "Save project" is not saved or checked (the learner wanted the screens to look like the finished product for the video, so they don't mention the prototype; the README explains it); real accounts would need hosting, a database and secure sign-in. The view-only board link is designed for an online app, but in the prototype it works on this laptop.
+- **Several repos per project** — each project still connects one repo (`scope.md > Later`).
 - **Order between tasks ("task C waits for task A")** — parked during the PRD interview; `4-spec` confirmed it stays out of the proof of concept.
 - **Other feedback types** (next-focus tip, big-tasks tip, and others) — keep the proof of concept small; only the team balance tip and the celebration are in.
 
